@@ -1,38 +1,8 @@
 const fs = require('fs')
-const contract = require('./contractHelper')
 const assert = require('assert')
 const path = require('path')
 
-const contractsConfig = require('./util/contractsConfig')
-
-function isString(n) {
-    return typeof n == 'string' || n instanceof String
-}
-
-async function setup(web3) {
-    const httpProvider = web3.currentProvider
-    const config = await contractsConfig(web3)
-    let incentiveLayer = await contract(httpProvider, config['ss_incentiveLayer'])
-    let fileSystem = await contract(httpProvider, config['fileSystem'])
-    return [incentiveLayer, fileSystem]
-}
-
-
-
-function verifyTaskFormat(task) {
-    assert(task.from != undefined)
-    assert(task.minDeposit != undefined)
-    assert(task.codeType != undefined)
-    assert(task.storageType != undefined)
-    assert(task.reward != undefined)
-}
-
-function verifyBundlePayloadFormat(bundlePayload) {
-    assert(bundlePayload.from != undefined)
-    assert(bundlePayload.gas != undefined)
-    assert(bundlePayload.contractAddress != undefined)
-    assert(bundlePayload.initHash != undefined)
-}
+const ps = require('./ps')
 
 const readFile = (filepath) => {
     return new Promise((resolve, reject) => {
@@ -62,7 +32,7 @@ module.exports = async (web3, logger, mcFileSystem) => {
         "WASM": merkleComputer.CodeType.WASM
     }
 
-    let [incentiveLayer, tbFileSystem] = await setup(web3)
+    let [incentiveLayer, tbFileSystem] = await ps.setup(web3)
 
     //Two filesystems (which may be confusing)
     //tbFileSystem is the Truebit filesystem contract

@@ -34,7 +34,6 @@ module.exports = async (configPath) => {
     web3.gp = "1000000000"
 
     const os = {
-        taskGiver: requireHelper(() => { return require(config["task-giver"]) }),
         solver: requireHelper(() => { return require(config["solver"]) }),
         verifier: requireHelper(() => { return require(config["verifier"]) }),
         web3: web3,

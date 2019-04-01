@@ -5,7 +5,6 @@
 const fs = require('fs')
 const mineBlocks = require('../os/lib/util/mineBlocks')
 const contractsConfig = require('../wasm-client/util/contractsConfig')
-const contract = require('../wasm-client/contractHelper')
 
 /** returns the package version  */
 module.exports.version = ({ os }) => {

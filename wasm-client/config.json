@@ -1,9 +1,8 @@
 {
-    "http-url": "http://localhost:8545",
-    "task-giver" : "../wasm-client/taskGiver",
-    "task-submitter" : "../wasm-client/taskSubmitter",
-    "solver" : "../wasm-client/solver",
-    "verifier" : "../wasm-client/verifier",
+    "ws-url": "ws://localhost:8546",
+    "solver" : "../wasm-client/ss_solver",
+    "verifier" : "../wasm-client/ss_verifier",
+    "task-submitter" : "../wasm-client/ss_taskSubmitter",
     "ipfs" : {
 	"host": "localhost",
 	"port": "5001",
@@ -11,5 +10,5 @@
 	"merkleComputer": "../wasm-client/merkle-computer/"
     },
     "throttle" : 20,
-    "incentiveLayer": "incentiveLayer"
+    "incentiveLayer": "ss_incentiveLayer"
 }

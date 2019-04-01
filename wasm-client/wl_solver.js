@@ -550,7 +550,7 @@ module.exports = {
             let gameID = result.gameID
             let lowStep = parseInt(result.idx1)
             let highStep = parseInt(result.idx2)
-
+            
             if (games[gameID]) {
 
                 let taskID = games[gameID].taskID

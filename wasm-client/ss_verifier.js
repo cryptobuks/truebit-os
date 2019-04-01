@@ -1,85 +1,31 @@
-const depositsHelper = require('./depositsHelper')
-const fs = require('fs')
-const contract = require('./contractHelper')
+
 const toTaskInfo = require('./util/toTaskInfo')
-const toSolutionInfo = require('./util/toSolutionInfo')
-const setupVM = require('./util/setupVM')
 const midpoint = require('./util/midpoint')
-const waitForBlock = require('./util/waitForBlock')
 const recovery = require('./recovery')
 const assert = require('assert')
 
 const fsHelpers = require('./fsHelpers')
 
-// const merkleComputer = require(__dirname + "/merkle-computer")('./../wasm-client/ocaml-offchain/interpreter/wasm')
+const ps = require('./ps')
 
-const contractsConfig = require('./util/contractsConfig')
-
-function setup(web3) {
-    return (async () => {
-        const httpProvider = web3.currentProvider
-        const config = await contractsConfig(web3)
-        let incentiveLayer = await contract(httpProvider, config['ss_incentiveLayer'])
-        let fileSystem = await contract(httpProvider, config['fileSystem'])
-        let disputeResolutionLayer = await contract(httpProvider, config['interactive'])
-        return [incentiveLayer, fileSystem, disputeResolutionLayer]
-    })()
-}
+let verifiers = []
 
 module.exports = {
+    get: () => verifiers.filter(a => !a.exited()),
     init: async (os, account, test = false, recover = -1) => {
 
         let { web3, logger, throttle } = os
         let mcFileSystem = os.fileSystem
-        let tasks = {}
-        let games = {}
 
-        logger.log({
-            level: 'info',
-            message: `Verifier initialized!`
-        })
+        logger.info(`Verifier initialized!`)
 
-        let [incentiveLayer, fileSystem, disputeResolutionLayer, tru] = await setup(web3)
+        let p = await ps.make(web3, logger, recover, account)
 
-        const config = await contractsConfig(web3)
-        const WAIT_TIME = config.WAIT_TIME || 0
+        verifiers.push(p.ps)
+
+        let [incentiveLayer, fileSystem, disputeResolutionLayer] = await ps.setup(web3)
 
         let helpers = fsHelpers.init(fileSystem, web3, mcFileSystem, logger, incentiveLayer, account, os.config)
-
-        const clean_list = []
-        let game_list = []
-        let task_list = []
-
-        let bn = await web3.eth.getBlockNumber()
-
-        let recovery_mode = recover > 0
-        let events = []
-        const RECOVERY_BLOCKS = recover
-
-        function addEvent(name, evC, handler) {
-
-            if (!evC) {
-                logger.error(`VERIFIER: ${name} event is undefined when given to addEvent`)
-            } else {
-                let ev = recovery_mode ? evC({}, { fromBlock: Math.max(0, bn - RECOVERY_BLOCKS) }) : evC()
-                clean_list.push(ev)
-                ev.watch(async (err, result) => {
-                    // console.log(result)
-                    if (result && recovery_mode) {
-                        events.push({ event: result, handler })
-                        console.log("Recovering", result.event, "at block", result.blockNumber)
-                    } else if (result) {
-                        try {
-                            await handler(result)
-                        } catch (e) {
-                            logger.error(`VERIFIER: Error while handling ${name} event ${JSON.stringify(result)}: ${e}`)
-                        }
-                    } else {
-                        console.log(err)
-                    }
-                })
-            }
-        }
 
         //INCENTIVE
 

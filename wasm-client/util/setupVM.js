@@ -27,8 +27,16 @@ module.exports = async (incentiveLayer, merkleComputer, taskID, wasmCodeBuffer, 
         throw "code type not recognized"
     }
 
-    let vmParameters = toVmParameters(await incentiveLayer.getVMParameters.call(taskID))
+    let data = await incentiveLayer.methods.getVMParameters(taskID).call()
 
+    let vmParameters = {
+        stack: parseInt(data[0]),
+        mem: parseInt(data[1]),
+        globals: parseInt(data[2]),
+        table: parseInt(data[3]),
+        call: parseInt(data[4]),
+        gasLimit: parseInt(data[5]),
+    }
     // add metering
     if (vmParameters.gasLimit > 0) {
         const metering = require('wasm-metering-tb')
