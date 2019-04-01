@@ -24,6 +24,9 @@ contract TestBook is ITruebit {
 
     mapping (bytes32 => Task) tasks;
 
+    constructor () public {
+    }
+    
     function isFailed(bytes32 taskID) external returns (bool) {
         return tasks[taskID].failed;
     }

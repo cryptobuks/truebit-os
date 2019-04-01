@@ -15,6 +15,9 @@ contract TRU is MintableToken, BurnableToken {
 
     bool faucetEnabled;
 
+    constructor () public {
+    }
+
     function enableFaucet() public onlyOwner {
         faucetEnabled = true;
     }

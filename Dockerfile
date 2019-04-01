@@ -27,6 +27,10 @@ RUN wget https://dist.ipfs.io/go-ipfs/v0.4.19/go-ipfs_v0.4.19_linux-amd64.tar.gz
  && cd / \
  && rm -rf go-ipfs*
 
+RUN cd bin \
+ && wget https://releases.parity.io/ethereum/v2.4.3/x86_64-unknown-linux-gnu/parity \
+ && chmod 755 parity
+
 RUN git clone https://github.com/TruebitFoundation/jit-runner \
  && cd jit-runner \
  && git checkout  v2 \
@@ -34,7 +38,7 @@ RUN git clone https://github.com/TruebitFoundation/jit-runner \
 
 RUN git clone https://github.com/mrsmkl/truebit-os \
  && cd truebit-os \
- && git checkout meter_fix \
+ && git checkout test-with-parity \
  && npm i --production \
  && npm run deps \
  && npm run  compile \

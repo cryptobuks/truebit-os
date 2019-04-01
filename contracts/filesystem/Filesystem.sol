@@ -9,7 +9,7 @@ import "./BundleManager.sol";
 contract Filesystem is BundleManager {
     constructor() public BundleManager() {}
     function calcId(uint nonce) public view returns (bytes32) {
-	return keccak256(abi.encodePacked(msg.sender, nonce));
+	    return keccak256(abi.encodePacked(msg.sender, nonce));
     }
 
 }
