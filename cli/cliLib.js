@@ -160,22 +160,25 @@ module.exports.accounts = async ({ os }) => {
   return accounts
 }
 
+function contract(web3, info) {
+  return new web3.eth.Contract(info.abi, info.address)    
+}
+
 /** get balance of an account */
 module.exports.balance = async ({ os, args }) => {
   const account = os.accounts[args.options.account || 0]
   let balance = os.web3.utils.fromWei(await os.web3.eth.getBalance(account))
   let block = await os.web3.eth.getBlockNumber()
-  const httpProvider = os.web3.currentProvider
 	const config = await contractsConfig(os.web3)
-  const tru = await contract(httpProvider, config['tru'])
-  const incentiveLayer = await contract(httpProvider, config[os.config.incentiveLayer])
-  let truBalance_raw = await tru.balanceOf.call(account)
+  const tru = contract(os.web3, config['tru'])
+  const incentiveLayer = await contract(os.web3, config[os.config.incentiveLayer])
+  let truBalance_raw = await tru.methods.balanceOf(account).call()
   let truBalance = os.web3.utils.fromWei(truBalance_raw.toString(10))
-  let deposit_raw = await incentiveLayer.getDeposit.call(account)
+  let deposit_raw = await incentiveLayer.methods.getDeposit(account).call()
   let deposit = os.web3.utils.fromWei(deposit_raw.toString(10))
   os.logger.log({
     level: 'info',
-    message: `${account}: ${balance} ETH, ${truBalance} TRU, deposit ${deposit} TRU at block ${block}`
+    message: `${account}: ${balance} ETH, ${truBalance} TRU, deposit ${deposit} ETH at block ${block}`
   })
   return balance
 }
@@ -185,26 +188,23 @@ module.exports.deposit = async ({ os, args }) => {
   const account = os.accounts[args.options.account || 0]
   const num_tru = (args.options.value || "1").toString()
   const num = os.web3.utils.toWei(num_tru)
-  const httpProvider = os.web3.currentProvider
 	const config = await contractsConfig(os.web3)
-  const incentiveLayer = await contract(httpProvider, config[os.config.incentiveLayer])
-  const tru = await contract(httpProvider, config['tru'])
+  const incentiveLayer = contract(os.web3, config[os.config.incentiveLayer])
+  const tru = contract(os.web3, config['tru'])
 
-  await tru.approve(incentiveLayer.address, num, { from: account, gasPrice:os.web3.gp })
-  await incentiveLayer.makeDeposit(num, { from: account, gasPrice:os.web3.gp })
+  await tru.methods.approve(incentiveLayer.address, num).send({ from: account, gasPrice:os.web3.gp })
+  await incentiveLayer.methods.makeDeposit(num).send({ from: account, gasPrice:os.web3.gp })
 
   module.exports.balance({os, args})
 }
 
 /** unbond deposit from task */
 module.exports.unbondDeposit = async ({ os, args }) => {
-  console.log("unbond", args)
   const account = os.accounts[args.options.account || 0]
-  const httpProvider = os.web3.currentProvider
 	const config = await contractsConfig(os.web3)
-  const incentiveLayer = await contract(httpProvider, config[os.config.incentiveLayer])
+  const incentiveLayer = contract(os.web3, config[os.config.incentiveLayer])
 
-  await incentiveLayer.unbondDeposit(args.task, { from: account, gasPrice:os.web3.gp })
+  await incentiveLayer.methods.unbondDeposit(args.task).send({ from: account, gasPrice:os.web3.gp })
 
   module.exports.balance({os, args})
 }
@@ -214,11 +214,10 @@ module.exports.depositEther = async ({ os, args }) => {
   const account = os.accounts[args.options.account || 0]
   const num_eth = (args.options.value || "1").toString()
   const num = os.web3.utils.toWei(num_eth)
-  const httpProvider = os.web3.currentProvider
 	const config = await contractsConfig(os.web3)
-  const incentiveLayer = await contract(httpProvider, config["ss_incentiveLayer"])
+  const incentiveLayer = contract(os.web3, config["ss_incentiveLayer"])
 
-  await incentiveLayer.makeDeposit({ value: num, from: account, gasPrice:os.web3.gp })
+  await incentiveLayer.methods.makeDeposit().send({ value: num, from: account, gasPrice:os.web3.gp })
 
   module.exports.balance({os, args})
 }
@@ -235,12 +234,11 @@ function makeRandom(n) {
 module.exports.ticket = async ({ os, args }) => {
   const account = os.accounts[args.options.account || 0]
   const num = args.options.value || 1
-  const httpProvider = os.web3.currentProvider
 	const config = await contractsConfig(os.web3)
-  const wl = await contract(httpProvider, config["stake_whitelist"])
+  const wl = contract(os.web3, config["stake_whitelist"])
   for (let i = 0; i < num; i++) {
     let ticket = makeRandom(32)
-    await wl.buyTicket(ticket, { from: account, gas: 1000000, gasPrice: os.web3.gp })
+    await wl.methods.buyTicket(ticket).send({ from: account, gas: 1000000, gasPrice: os.web3.gp })
   }
   module.exports.balance({os, args})
 }
@@ -248,22 +246,15 @@ module.exports.ticket = async ({ os, args }) => {
 /** claim test tokens */
 module.exports.claimTokens = async ({ os, args }) => {
   const account = os.accounts[args.options.account || 0]
-  const httpProvider = os.web3.currentProvider
 	const config = await contractsConfig(os.web3)
-  const tru = await contract(httpProvider, config['tru'])
-  let success = await tru.getTestTokens.call({from:account, gas:100000})
+  const tru = contract(os.web3, config['tru'])
+  let success = await tru.methods.getTestTokens().call({from:account, gas:100000})
   if (!success) {
-    os.logger.log({
-      level: 'info',
-      message: `${account}: Already claimed the test tokens`
-    })
+    os.logger.info(`${account}: Already claimed the test tokens`)
   }
   else {
-    await tru.getTestTokens({from:account, gas:100000, gasPrice:os.web3.gp})
-    os.logger.log({
-      level: 'info',
-      message: `${account}: Claimed test tokens`
-    })
+    await tru.methods.getTestTokens().send({from:account, gas:100000, gasPrice:os.web3.gp})
+    os.logger.info(`${account}: Claimed test tokens`)
     module.exports.balance({os, args})
   }
 }
