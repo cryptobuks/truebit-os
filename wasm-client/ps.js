@@ -69,7 +69,7 @@ module.exports.make = async function (web3, logger, recover, account) {
             }
             else if (result) {
                 try {
-                    await handler(result)
+                    await handler(result.returnValues)
                 }
                 catch (e) {
                     // console.log(e)

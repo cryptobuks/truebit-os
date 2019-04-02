@@ -30,12 +30,9 @@ module.exports = {
         //INCENTIVE
 
         //Solution committed event
-        addEvent("SolutionsCommitted", incentiveLayer.SolutionsCommitted, async result => {
+        p.addEvent("SolutionsCommitted", incentiveLayer.events.SolutionsCommitted, async result => {
 
-            logger.log({
-                level: 'info',
-                message: `VERIFIER: Solution has been posted`
-            })
+            logger.info(`VERIFIER: Solution has been posted`)
 
             let taskID = result.args.taskID
             let solverHash0 = result.args.solutionHash

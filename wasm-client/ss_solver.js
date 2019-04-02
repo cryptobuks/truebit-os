@@ -33,12 +33,9 @@ module.exports = {
 
         p.addEvent("TaskCreated", incentiveLayer.events.TaskCreated, async (result) => {
 
-            logger.log({
-                level: 'info',
-                message: `SOLVER: Task has been posted. Going to solve it.`
-            })
-
             let taskID = result.taskID
+
+            logger.info(`SOLVER: Task ${taskID} has been posted. Going to solve it.`)
 
             let taskInfo = toTaskInfo(await incentiveLayer.methods.getTaskInfo(taskID).call())
             p.addTask(taskID)
@@ -86,13 +83,10 @@ module.exports = {
 
             if (p.tasks[taskID]) {
                 let vm = p.tasks[taskID].solution.vm
-                await incentiveLayer.revealSolution(taskID, vm.code, vm.input_size, vm.input_name, vm.input_data, { from: account, gas: 1000000 })
+                await incentiveLayer.methods.revealSolution(taskID, vm.code, vm.input_size, vm.input_name, vm.input_data).send({ from: account, gas: 1000000 })
                 await helpers.uploadOutputs(taskID, p.tasks[taskID].vm)
 
-                logger.log({
-                    level: 'info',
-                    message: `SOLVER: Revealed solution for task: ${taskID}. Outputs have been uploaded.`
-                })
+                logger.info(`SOLVER: Revealed solution for task: ${taskID}. Outputs have been uploaded.`)
             }
 
         })
@@ -102,11 +96,7 @@ module.exports = {
 
             if (p.tasks[taskID]) {
                 delete p.tasks[taskID]
-                logger.log({
-                    level: 'info',
-                    message: `SOLVER: Task ${taskID} finalized.`
-                })
-
+                logger.info(`SOLVER: Task ${taskID} finalized.`)
             }
 
         })
@@ -296,7 +286,10 @@ module.exports = {
             }
         })
 
-        p.addEvent("WinnerSelected", disputeResolutionLayer.events.WinnerSelected, async (result) => {})
+        p.addEvent("WinnerSelected", disputeResolutionLayer.events.WinnerSelected, async (result) => {
+            let gameID = result.gameID
+            delete games[gameID]
+        })
 
         p.addEvent("Reported", disputeResolutionLayer.events.Reported, async (result) => {})
 

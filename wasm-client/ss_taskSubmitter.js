@@ -66,12 +66,12 @@ module.exports = async (web3, logger, mcFileSystem) => {
     }
 
     async function makeBundle(account) {
-        let bundleNonce = Math.floor(Math.random() * Math.pow(2, 60))
-        let bundleId = await tbFileSystem.calcId.call(bundleNonce, { from: account })
+        let bundleNonce = Math.floor(Math.random() * Math.pow(2, 60)).toString()
+        let bundleId = await tbFileSystem.methods.calcId(bundleNonce).call({ from: account })
 
-        await tbFileSystem.makeBundle(bundleNonce, { from: account, gas: 300000 })
+        await tbFileSystem.methods.makeBundle(bundleNonce).call({ from: account, gas: 300000 })
 
-        console.log("made bundle", bundleId)
+        logger.info(`Made bundle ${bundleId}`)
 
         return bundleId
     }
@@ -92,15 +92,15 @@ module.exports = async (web3, logger, mcFileSystem) => {
 
         let fileRoot = merkleComputer.merkleRoot(web3, codeBuf)
 
-        let codeFileID = await tbFileSystem.calcId.call(randomNum, { from: from })
+        let codeFileID = await tbFileSystem.methods.calcId(randomNum).call({ from: from })
 
-        await tbFileSystem.addIPFSFile(name, size, ipfsHash, fileRoot, randomNum, { from: from, gas: 300000 })
+        await tbFileSystem.methods.addIPFSFile(name, size, ipfsHash, fileRoot, randomNum).send({ from: from, gas: 300000 })
 
-        await tbFileSystem.setCodeRoot(codeFileID, codeRoot, { from: from, gas: 100000 })
+        await tbFileSystem.methods.setCodeRoot(codeFileID, codeRoot).send({ from: from, gas: 100000 })
 
-        await tbFileSystem.finalizeBundle(bundleID, codeFileID)
+        await tbFileSystem.methods.finalizeBundle(bundleID, codeFileID).send({ from: from, gas: 1000000 })
 
-        let initHash = await tbFileSystem.getInitHash.call(bundleID)
+        let initHash = await tbFileSystem.methods.finalizeBundle(bundleID, codeFileID).call({ from: from, gas: 1000000 })
 
         return [bundleID, initHash]
     }
@@ -135,33 +135,31 @@ module.exports = async (web3, logger, mcFileSystem) => {
 
             let fileIPFSHash = (await mcFileSystem.upload(fileBuf, "bundle/" + fileName))[0].hash
 
-            let fileID = await tbFileSystem.calcId.call(fileNonce, { from: from })
+            let fileID = await tbFileSystem.methods.calcId(fileNonce).call({ from: from })
 
-            await tbFileSystem.addIPFSFile(
+            await tbFileSystem.methods.addIPFSFile(
                 fileName,
                 fileSize,
                 fileIPFSHash,
                 fileRoot,
-                fileNonce,
-                { from: from, gas: 200000 }
-            )
+                fileNonce).send({ from: from, gas: 200000 })
 
-            await tbFileSystem.addToBundle(bundleID, fileID, { from: from })
+            await tbFileSystem.methods.addToBundle(bundleID, fileID).send({ from: from })
         }
 
         let randomNum = Math.floor(Math.random() * Math.pow(2, 60))
-        let codeFileId = await tbFileSystem.calcId(randomNum, { from: from })
+        let codeFileId = await tbFileSystem.methods.calcId(randomNum).call({ from: from })
 
         config.files = newFiles
 
         let codeRoot = await getCodeRoot(config, dirPath)
         let fileRoot = merkleComputer.merkleRoot(web3, codeBuf)
 
-        await tbFileSystem.addIPFSCodeFile(codeName, codeSize, ipfsHash, fileRoot, codeRoot, randomNum, { from: from, gas: 300000 })
+        await tbFileSystem.methods.addIPFSCodeFile(codeName, codeSize, ipfsHash, fileRoot, codeRoot, randomNum).send({ from: from, gas: 300000 })
 
-        await tbFileSystem.finalizeBundle(bundleID, codeFileId, { from: from, gas: 1500000 })
+        await tbFileSystem.methods.finalizeBundle(bundleID, codeFileId).send({ from: from, gas: 1500000 })
 
-        let initHash = await tbFileSystem.getInitHash.call(bundleID)
+        let initHash = await tbFileSystem.methods.finalizeBundle(bundleID, codeFileId).call({ from: from, gas: 1500000 })
 
         return [bundleID, initHash]
     }
@@ -169,16 +167,16 @@ module.exports = async (web3, logger, mcFileSystem) => {
     //This also creates a directory for the random path if it doesnt exist
 
     function setupTaskConfiguration(task) {
-        task["codeType"] = typeTable[task.codeType]
+        task.codeType = typeTable[task.codeType]
 
         if (!task.files) {
-            task["files"] = []
+            task.files = []
         }
 
         if (!task.inputFile) {
-            task["inputFile"] = ""
+            task.inputFile = ""
         } else {
-            task["inputFile"] = process.cwd() + task.inputFile
+            task.inputFile = process.cwd() + task.inputFile
         }
 
         let codeBuf = fs.readFileSync(process.cwd() + task.codeFile)
@@ -210,75 +208,58 @@ module.exports = async (web3, logger, mcFileSystem) => {
             if (task.files == []) {
                 let [bundleID, initHash] = await uploadIPFS(codeBuf, config, task.from, randomPath)
 
-                task["bundleID"] = bundleID
-                task["initHash"] = initHash
+                task.bundleID = bundleID
+                task.initHash = initHash
             } else {
                 let [bundleID, initHash] = await uploadIPFSFiles(codeBuf, config, task.from, randomPath)
-                task["bundleID"] = bundleID
-                task["initHash"] = initHash
+                task.bundleID = bundleID
+                task.initHash = initHash
             }
 
-            logger.log({
-                level: 'info',
-                message: `Uploaded data to IPFS`
-            })
+            logger.info(`Uploaded data to IPFS`)
 
         } else { //store file on blockchain
 
             let contractAddress = await uploadOnchain(codeBuf, { from: task.from, gas: 4000000 })
 
-            logger.log({
-                level: 'info',
-                message: `Uploaded data onchain`
-            })
+            logger.info(`Uploaded data onchain`)
 
             let codeRoot = await getCodeRoot(config, randomPath)
             let fileRoot = merkleComputer.merkleRoot(web3, codeBuf)
-            let codeFileNonce = Math.floor(Math.random() * Math.pow(2, 60))
-            let codeFileId = await tbFileSystem.calcId.call(codeFileNonce, { from: task.from })
+            let codeFileNonce = Math.floor(Math.random() * Math.pow(2, 60)).toString()
+            let codeFileId = await tbFileSystem.methods.calcId(codeFileNonce).call({ from: task.from })
             // let codeFileId2 = await tbFileSystem.calcId.call(codeFileNonce)
             // console.log("code file nonce", codeFileNonce, codeFileId, codeFileId2, task.from)
 
             let size = Buffer.byteLength(codeBuf, 'utf8');
 
-            await tbFileSystem.addContractFile("task.wasm", codeFileNonce, contractAddress, fileRoot, size, { from: task.from, gas: 300000 })
-            await tbFileSystem.setCodeRoot(codeFileId, codeRoot, { from: task.from, gas: 100000 })
+            await tbFileSystem.methods.addContractFile("task.wasm", codeFileNonce, contractAddress, fileRoot, size).send({ from: task.from, gas: 300000 })
+            await tbFileSystem.methods.setCodeRoot(codeFileId, codeRoot).send({ from: task.from, gas: 100000 })
 
             let bundleID = await makeBundle(task.from)
 
-            await tbFileSystem.finalizeBundle(bundleID, codeFileId, { from: task.from, gas: 3000000 })
-            let initHash = await tbFileSystem.finalizeBundle.call(bundleID, codeFileId, { from: task.from, gas: 3000000 })
+            await tbFileSystem.methods.finalizeBundle(bundleID, codeFileId).send({ from: task.from, gas: 3000000 })
+            let initHash = await tbFileSystem.methods.finalizeBundle(bundleID, codeFileId).call({ from: task.from, gas: 3000000 })
 
-            logger.log({
-                level: 'info',
-                message: `Registered deployed contract with truebit filesystem`
-            })
+            logger.info(`Registered deployed contract with Truebit filesystem`)
 
-            task["bundleID"] = bundleID
-            task["initHash"] = initHash
+            task.bundleID = bundleID
+            task.initHash = initHash
         }
 
         task.reward = web3.utils.toWei(task.reward, 'ether')
 
-        logger.log({ level: 'info', message: `Submitting task` })
+        logger.info(`Submitting task`)
 
-        console.log(task.initHash,
-            task.codeType,
-            task.bundleId,
-            1)
+        console.log(task.initHash,task.codeType,task.bundleID,1)
 
-        var id = await incentiveLayer.createTask(
+        var id = await incentiveLayer.methods.createTask(
             task.initHash,
             task.codeType,
             task.bundleID,
-            1,
-            { gas: 1000000, from: task.from, value: task.reward }
-        )
+            1).send({ gas: 1000000, from: task.from, value: task.reward })
 
-        logger.log({
-            level: 'info',
-            message: 'Task was created'
-        })
+        logger.info('Task was created')
 
         return id
 
