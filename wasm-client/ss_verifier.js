@@ -17,9 +17,9 @@ module.exports = {
         let { web3, logger, throttle } = os
         let mcFileSystem = os.fileSystem
 
-        logger.info(`Verifier initialized!`)
+        logger.info(`Verifier initialized! ${test ? "(Test mode)" : ""}`)
 
-        let p = await ps.make(web3, logger, recover, account)
+        let p = await ps.make(web3, logger, recover, account, "VERIFIER")
 
         verifiers.push(p.ps)
 
@@ -34,12 +34,12 @@ module.exports = {
 
             logger.info(`VERIFIER: Solution has been posted`)
 
-            let taskID = result.args.taskID
-            let solverHash0 = result.args.solutionHash
-            let taskInfo = toTaskInfo(await incentiveLayer.getTaskInfo.call(taskID))
+            let taskID = result.taskID
+            let solverHash0 = result.solutionHash
+            let taskInfo = toTaskInfo(await incentiveLayer.methods.getTaskInfo(taskID).call())
             taskInfo.taskID = taskID
 
-            if (Object.keys(tasks).length <= throttle) {
+            if (Object.keys(p.tasks).length <= throttle) {
 
                 logger.info("VERIFIER: Setting up VM")
                 let vm = await helpers.setupVMWithFS(taskInfo)
@@ -48,53 +48,44 @@ module.exports = {
                 let interpreterArgs = []
                 solution = await vm.executeWasmTask(interpreterArgs)
 
-                logger.log({
-                    level: 'info',
-                    message: `VERIFIER: Executed task ${taskID}. Checking solutions`
-                })
+                logger.info(`VERIFIER: Executed task ${taskID}. Checking solutions`)
 
-                task_list.push(taskID)
+                p.task_list.push(taskID)
 
                 let myHash = solution.hash
                 if (test) myHash = "0x" + helpers.makeSecret(myHash)
 
-                tasks[taskID] = {
+                p.tasks[taskID] = {
                     solverHash0: solverHash0,
                     solutionHash: solution.hash,
                     vm: vm,
                 }
 
                 if (myHash != solverHash0) {
-                    await incentiveLayer.makeChallenge(taskID, { from: account, gas: 350000, value: web3.utils.toWei("0.1", "ether") })
+                    await incentiveLayer.methods.makeChallenge(taskID).send({ from: account, gas: 350000, value: web3.utils.toWei("0.01", "ether") })
 
-                    logger.log({
-                        level: 'info',
-                        message: `VERIFIER: Challenged solution for task ${taskID}`
-                    })
+                    logger.info(`VERIFIER: Challenged solution for task ${taskID}`)
                 }
+                else logger.info(`VERIFIER: Solution was correct for task ${taskID}`)
 
 
             }
         })
 
-        addEvent("VerificationCommitted", incentiveLayer.VerificationCommitted, async result => { })
+        p.addEvent("VerificationCommitted", incentiveLayer.events.VerificationCommitted, async result => { })
 
-        addEvent("TaskFinalized", incentiveLayer.TaskFinalized, async (result) => {
-            let taskID = result.args.taskID
+        p.addEvent("TaskFinalized", incentiveLayer.events.TaskFinalized, async (result) => {
+            let taskID = result.taskID
 
-            if (tasks[taskID]) {
-                delete tasks[taskID]
-                logger.log({
-                    level: 'info',
-                    message: `VERIFIER: Task ${taskID} finalized.`
-                })
-
+            if (p.tasks[taskID]) {
+                delete p.tasks[taskID]
+                logger.info(`VERIFIER: Task ${taskID} finalized.`)
             }
 
         })
 
-        addEvent("SlashedDeposit", incentiveLayer.SlashedDeposit, async (result) => {
-            let addr = result.args.account
+        p.addEvent("SlashedDeposit", incentiveLayer.events.SlashedDeposit, async (result) => {
+            let addr = result.account
 
             if (account.toLowerCase() == addr.toLowerCase()) {
                 logger.info("VERIFIER: Oops, I was slashed, hopefully this was a test")
@@ -104,88 +95,70 @@ module.exports = {
 
         // DISPUTE
 
-        addEvent("StartChallenge", disputeResolutionLayer.StartChallenge, async result => {
-            let challenger = result.args.c
+        p.addEvent("StartChallenge", disputeResolutionLayer.events.StartChallenge, async result => {
+            let challenger = result.c
 
             if (challenger.toLowerCase() == account.toLowerCase()) {
-                let gameID = result.args.gameID
+                let gameID = result.gameID
 
-                game_list.push(gameID)
+                p.game_list.push(gameID)
 
-                let taskID = await disputeResolutionLayer.getTask.call(gameID)
+                let taskID = await disputeResolutionLayer.methods.getTask(gameID).call()
 
-                games[gameID] = {
-                    prover: result.args.prover,
+                p.games[gameID] = {
+                    prover: result.prover,
                     taskID: taskID
                 }
             }
         })
 
-        addEvent("Queried", disputeResolutionLayer.Queried, async result => {})
+        p.addEvent("Queried", disputeResolutionLayer.events.Queried, async result => {})
 
-        addEvent("Reported", disputeResolutionLayer.Reported, async result => {
-            let gameID = result.args.gameID
+        p.addEvent("Reported", disputeResolutionLayer.events.Reported, async result => {
+            let gameID = result.gameID
 
-            if (games[gameID]) {
+            if (p.games[gameID]) {
 
-                let lowStep = result.args.idx1.toNumber()
-                let highStep = result.args.idx2.toNumber()
-                let taskID = games[gameID].taskID
+                let lowStep = parseInt(result.idx1)
+                let highStep = parseInt(result.idx2)
+                let taskID = p.games[gameID].taskID
 
-                logger.log({
-                    level: 'info',
-                    message: `VERIFIER: Report received game: ${gameID} low: ${lowStep} high: ${highStep}`
-                })
+                logger.info(`VERIFIER: Report received game: ${gameID} low: ${lowStep} high: ${highStep}`)
 
                 let stepNumber = midpoint(lowStep, highStep)
 
-                let reportedStateHash = await disputeResolutionLayer.getStateAt.call(gameID, stepNumber)
+                let reportedStateHash = await disputeResolutionLayer.methods.getStateAt(gameID, stepNumber).call()
 
-                let stateHash = await tasks[taskID].vm.getLocation(stepNumber, tasks[taskID].interpreterArgs)
+                let stateHash = await p.tasks[taskID].vm.getLocation(stepNumber, p.tasks[taskID].interpreterArgs)
 
                 let num = reportedStateHash == stateHash ? 1 : 0
 
-                await disputeResolutionLayer.query(
-                    gameID,
-                    lowStep,
-                    highStep,
-                    num,
-                    { from: account }
-                )
+                await disputeResolutionLayer.methods.query(gameID, lowStep, highStep, num).send({ from: account })
 
             }
         })
 
-        addEvent("PostedPhases", disputeResolutionLayer.PostedPhases, async result => {
-            let gameID = result.args.gameID
+        p.addEvent("PostedPhases", disputeResolutionLayer.events.PostedPhases, async result => {
+            let gameID = result.gameID
 
-            if (games[gameID]) {
+            if (p.games[gameID]) {
 
-                logger.log({
-                    level: 'info',
-                    message: `VERIFIER: Phases posted for game: ${gameID}`
-                })
+                logger.info(`VERIFIER: Phases posted for game: ${gameID}`)
+                
+                let lowStep = result.idx1
+                let phases = result.arr
 
-                let lowStep = result.args.idx1
-                let phases = result.args.arr
-
-                let taskID = games[gameID].taskID
+                let taskID = p.games[gameID].taskID
 
                 if (test) {
-                    await disputeResolutionLayer.selectPhase(gameID, lowStep, phases[3], 3, { from: account })
+                    await disputeResolutionLayer.methods.selectPhase(gameID, lowStep, phases[3], 3).send({ from: account })
                 } else {
 
-                    let states = (await tasks[taskID].vm.getStep(lowStep, tasks[taskID].interpreterArgs)).states
+                    let states = (await p.tasks[taskID].vm.getStep(lowStep, p.tasks[taskID].interpreterArgs)).states
 
                     for (let i = 0; i < phases.length; i++) {
                         if (states[i] != phases[i]) {
-                            await disputeResolutionLayer.selectPhase(
-                                gameID,
-                                lowStep,
-                                phases[i],
-                                i,
-                                { from: account }
-                            )
+                            await disputeResolutionLayer.methods.selectPhase(gameID, lowStep, phases[i], i).send({ from: account })
                             return
                         }
                     }
@@ -194,68 +167,52 @@ module.exports = {
             }
         })
 
-        let busy_table = {}
-        function busy(id) {
-            return busy_table[id] && Date.now() < busy_table[id]
-        }
-
-        function working(id) {
-            busy_table[id] = Date.now() + WAIT_TIME
-        }
-
+        p.addEvent("WinnerSelected", disputeResolutionLayer.events.WinnerSelected, async (result) => {
+            let gameID = result.gameID
+            delete p.games[gameID]
+        })
+        
         async function handleTimeouts(taskID) {
 
-            if (busy(taskID)) return
+            if (p.busy(taskID)) return
 
-            if (await incentiveLayer.solverLoses.call(taskID, { from: account })) {
+            if (await incentiveLayer.methods.solverLoses(taskID).call({ from: account })) {
 
-                working(taskID)
-                logger.log({
-                    level: 'info',
-                    message: `VERIFIER: Winning verification game for task ${taskID}`
-                })
+                p.working(taskID)
+                logger.info(`VERIFIER: Winning verification game for task ${taskID}`)
 
-                await incentiveLayer.solverLoses(taskID, { from: account })
+                await incentiveLayer.methods.solverLoses(taskID).send({ from: account })
 
             }
-            if (await incentiveLayer.isTaskTimeout.call(taskID, { from: account })) {
+            if (await incentiveLayer.methods.isTaskTimeout(taskID).call({ from: account })) {
 
-                working(taskID)
-                logger.log({
-                    level: 'info',
-                    message: `VERIFIER: Timeout in task ${taskID}`
-                })
+                p.working(taskID)
+                logger.info(`VERIFIER: Timeout in task ${taskID}`)
 
-                await incentiveLayer.taskTimeout(taskID, { from: account })
+                await incentiveLayer.methods.taskTimeout(taskID).call({ from: account })
 
             }
         }
 
         async function handleGameTimeouts(gameID) {
             // console.log("Verifier game timeout")
-            if (busy(gameID)) return
-            working(gameID)
-            if (await disputeResolutionLayer.gameOver.call(gameID)) {
+            if (p.busy(gameID)) return
+            if (await disputeResolutionLayer.methods.gameOver(gameID).call()) {
+                p.working(gameID)
 
-                logger.log({
-                    level: 'info',
-                    message: `Triggering game over, game: ${gameID}`
-                })
+                logger.info(`Triggering game over, game: ${gameID}`)
 
-                await disputeResolutionLayer.gameOver(gameID, { from: account })
+                await disputeResolutionLayer.methods.gameOver(gameID).send({ from: account })
             }
         }
 
         async function recoverTask(taskID) {
-            let taskInfo = toTaskInfo(await incentiveLayer.getTaskInfo.call(taskID))
-            if (!tasks[taskID]) tasks[taskID] = {}
-            tasks[taskID].taskInfo = taskInfo
+            let taskInfo = toTaskInfo(await incentiveLayer.methods.getTaskInfo(taskID).call())
+            if (!p.tasks[taskID]) p.tasks[taskID] = {}
+            p.tasks[taskID].taskInfo = taskInfo
             taskInfo.taskID = taskID
 
-            logger.log({
-                level: 'info',
-                message: `RECOVERY: Verifying task ${taskID}`
-            })
+            logger.info(`RECOVERY: Verifying task ${taskID}`)
 
             let vm = await helpers.setupVMWithFS(taskInfo)
 
@@ -263,27 +220,26 @@ module.exports = {
 
             let interpreterArgs = []
             let solution = await vm.executeWasmTask(interpreterArgs)
-            tasks[taskID].solution = solution
-            tasks[taskID].vm = vm
+            p.tasks[taskID].solution = solution
+            p.tasks[taskID].vm = vm
         }
 
         async function recoverGame(gameID) {
-            let taskID = await disputeResolutionLayer.getTask.call(gameID)
+            let taskID = await disputeResolutionLayer.methods.getTask(gameID).call()
 
-            if (!tasks[taskID]) logger.error(`FAILURE: haven't recovered task ${taskID} for game ${gameID}`)
+            if (!p.tasks[taskID]) logger.error(`FAILURE: haven't recovered task ${taskID} for game ${gameID}`)
 
-            logger.log({
-                level: 'info',
-                message: `RECOVERY: Solution to task ${taskID} has been challenged`
-            })
+            logger.info(`RECOVERY: Solution to task ${taskID} has been challenged`)
 
-            games[gameID] = {
+            p.games[gameID] = {
                 taskID: taskID
             }
         }
 
+        p.recover(recoverTask, recoverGame, disputeResolutionLayer, incentiveLayer, true)
+
         let ival = setInterval(() => {
-            task_list.forEach(async t => {
+            p.task_list.forEach(async t => {
                 try {
                     await handleTimeouts(t)
                 }
@@ -292,7 +248,7 @@ module.exports = {
                     logger.error(`Error while handling timeouts of task ${t}: ${e.toString()}`)
                 }
             })
-            game_list.forEach(async g => {
+            p.game_list.forEach(async g => {
                 try {
                     await handleGameTimeouts(g)
                 }
@@ -301,10 +257,6 @@ module.exports = {
                     logger.error(`Error while handling timeouts of game ${g}: ${e.toString()}`)
                 }
             })
-            if (recovery_mode) {
-                recovery_mode = false
-                recovery.analyze(account, events, recoverTask, recoverGame, disputeResolutionLayer, incentiveLayer, game_list, task_list, true)
-            }
         }, 2000)
 
         return () => {

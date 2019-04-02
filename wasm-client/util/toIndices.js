@@ -1,6 +1,6 @@
 module.exports = (data) => {
     return {
-	low: data[0].toNumber(),
-	high: data[1].toNumber()
+	low: parseInt(data[0]),
+	high: parseInt(data[1]),
     }
 }

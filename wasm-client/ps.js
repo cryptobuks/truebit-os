@@ -16,7 +16,7 @@ module.exports.setup = async function (web3) {
     return [incentiveLayer, fileSystem, disputeResolutionLayer, wl]
 }
 
-module.exports.make = async function (web3, logger, recover, account) {
+module.exports.make = async function (web3, logger, recover, account, role) {
     let res = {
         tasks: {},
         games: {},
@@ -29,11 +29,11 @@ module.exports.make = async function (web3, logger, recover, account) {
 
     let obj = {
         account:account,
-        games: () => game_list, 
-        tasks: () => task_list,
-        exit: () => { exiting = true },
-        exited: () => exited,
-        exiting: () => exiting,
+        games: () => res.game_list, 
+        tasks: () => res.task_list,
+        exit: () => { res.exiting = true },
+        exited: () => res.exited,
+        exiting: () => res.exiting,
     }
 
     res.ps = obj
@@ -60,12 +60,12 @@ module.exports.make = async function (web3, logger, recover, account) {
     res.events = []
 
     res.addEvent = function (name, evC, handler) {
-        if (!evC) return logger.error(`SOLVER: ${name} event is undefined when given to addEvent`)
+        if (!evC) return logger.error(`${role}: ${name} event is undefined when given to addEvent`)
         evC(async (err, result) => {
             // console.log(result)
             if (result && res.recovery_mode) {
                 res.events.push({ event: result, handler })
-                console.log("SOLVER: Recovering", result.event, "at block", result.blockNumber)
+                console.log(role, ": Recovering", result.event, "at block", result.blockNumber)
             }
             else if (result) {
                 try {
@@ -73,7 +73,7 @@ module.exports.make = async function (web3, logger, recover, account) {
                 }
                 catch (e) {
                     // console.log(e)
-                    logger.error(`SOLVER: Error while handling ${name} event ${JSON.stringify(result)}: ${e}`)
+                    logger.error(`${role}: Error while handling ${name} event ${JSON.stringify(result)}: ${e}`)
                 }
             }
             else console.log(err)
@@ -90,11 +90,11 @@ module.exports.make = async function (web3, logger, recover, account) {
         busy_table[id] = Date.now() + res.WAIT_TIME
     }
 
-    res.recover = function (recoverTask, recoverGame, disputeResolutionLayer, incentiveLayer) {
+    res.recover = function (recoverTask, recoverGame, disputeResolutionLayer, incentiveLayer, ver) {
 
         if (res.recovery_mode) {
             res.recovery_mode = false
-            recovery.analyze(account, res.events, recoverTask, recoverGame, disputeResolutionLayer, incentiveLayer, res.game_list, res.task_list)
+            recovery.analyze(account, res.events, recoverTask, recoverGame, disputeResolutionLayer, incentiveLayer, res.game_list, res.task_list, ver)
         }
     }
 

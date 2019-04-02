@@ -21,7 +21,7 @@ module.exports = {
 
         logger.info(`Solver initialized at block ${await web3.eth.getBlockNumber()}`)
 
-        let p = await ps.make(web3, logger, recover, account)
+        let p = await ps.make(web3, logger, recover, account, "SOLVER")
 
         solvers.push(p.ps)
 
@@ -156,7 +156,7 @@ module.exports = {
                 //Post response to implied midpoint query
                 let stepNumber = midpoint(indices.low, indices.high)
 
-                let stateHash = await p.tasks[taskID].vm.getLocation(stepNumber, tasks[taskID].interpreterArgs)
+                let stateHash = await p.tasks[taskID].vm.getLocation(stepNumber, p.tasks[taskID].interpreterArgs)
 
                 await disputeResolutionLayer.methods.report(gameID, indices.low, indices.high, [stateHash]).send({ from: account })
 
@@ -179,7 +179,7 @@ module.exports = {
                 if (lowStep + 1 != highStep) {
                     let stepNumber = midpoint(lowStep, highStep)
 
-                    let stateHash = await p.tasks[taskID].vm.getLocation(stepNumber, tasks[taskID].interpreterArgs)
+                    let stateHash = await p.tasks[taskID].vm.getLocation(stepNumber, p.tasks[taskID].interpreterArgs)
 
                     await disputeResolutionLayer.methods.report(gameID, lowStep, highStep, [stateHash]).send({ from: account })
 
@@ -191,7 +191,7 @@ module.exports = {
                     // let lowStepState = await disputeResolutionLayer.getStateAt.call(gameID, lowStep)
                     // let highStepState = await disputeResolutionLayer.getStateAt.call(gameID, highStep)
 
-                    let states = (await p.tasks[taskID].vm.getStep(lowStep, tasks[taskID].interpreterArgs)).states
+                    let states = (await p.tasks[taskID].vm.getStep(lowStep, p.tasks[taskID].interpreterArgs)).states
 
                     await disputeResolutionLayer.methods.postPhases(gameID, lowStep, states).send({from: account, gas: 400000})
 
@@ -212,7 +212,7 @@ module.exports = {
 
                 logger.info(`SOLVER: Phase ${phase} for game ${gameID}`)
 
-                let stepResults = await p.tasks[taskID].vm.getStep(lowStep, tasks[taskID].interpreterArgs)
+                let stepResults = await p.tasks[taskID].vm.getStep(lowStep, p.tasks[taskID].interpreterArgs)
 
                 let phaseStep = merkleComputer.phaseTable[phase]
 
@@ -249,7 +249,7 @@ module.exports = {
                 } else { vm = proof.vm }
 
                 if (phase == 6 && parseInt(m.op.substr(-12, 2), 16) == 16) {
-                    disputeResolutionLayer.callCustomJudge(
+                    disputeResolutionLayer.methods.callCustomJudge(
                         gameID,
                         lowStep,
                         m.op,
@@ -258,15 +258,13 @@ module.exports = {
                         proof.merkle.result_size,
                         proof.merkle.list,
                         merkleComputer.getRoots(vm),
-                        merkleComputer.getPointers(vm),
-                        { from: account, gas: 500000 }
-                    )
+                        merkleComputer.getPointers(vm)).send({ from: account, gas: 500000 })
 
                     //TODO
                     //merkleComputer.getLeaf(proof.merkle.list, proof.merkle.location)
                     //merkleComputer.storeHash(hash, proof.merkle.data)
                 } else {
-                    await disputeResolutionLayer.callJudge(
+                    await disputeResolutionLayer.methods.callJudge(
                         gameID,
                         lowStep,
                         phase,
@@ -276,9 +274,7 @@ module.exports = {
                         m.op,
                         [m.reg1, m.reg2, m.reg3, m.ireg],
                         merkleComputer.getRoots(vm),
-                        merkleComputer.getPointers(vm),
-                        { from: account, gas: 5000000 }
-                    )
+                        merkleComputer.getPointers(vm)).send({ from: account, gas: 5000000 })
                 }
 
                 logger.info(`SOLVER: Judge called for game ${gameID}`)
@@ -288,7 +284,7 @@ module.exports = {
 
         p.addEvent("WinnerSelected", disputeResolutionLayer.events.WinnerSelected, async (result) => {
             let gameID = result.gameID
-            delete games[gameID]
+            delete p.games[gameID]
         })
 
         p.addEvent("Reported", disputeResolutionLayer.events.Reported, async (result) => {})
@@ -387,7 +383,7 @@ module.exports = {
             }
         }
 
-        p.recover(recoverTask, recoverGame, disputeResolutionLayer, incentiveLayer)
+        p.recover(recoverTask, recoverGame, disputeResolutionLayer, incentiveLayer, false)
 
         let ival = setInterval(async () => {
             p.task_list.forEach(async t => {
