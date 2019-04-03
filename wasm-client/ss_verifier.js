@@ -238,7 +238,25 @@ module.exports = {
 
         p.recover(recoverTask, recoverGame, disputeResolutionLayer, incentiveLayer, true)
 
-        let ival = setInterval(() => {
+        let ival
+
+        let cleanup = () => {
+            try {
+                let empty = data => { }
+                clearInterval(ival)
+                // clean_list.forEach(ev => ev.stopWatching(empty))
+            }
+            catch (e) {
+                console.log(e)
+                logger.error("VERIFIER: Error when stopped watching events")
+            }
+            p.exited = true
+            logger.info("VERIFIER: Exiting")
+        }
+
+        ival = setInterval(() => {
+            if (p.exiting && p.task_list.length == 0) return cleanup()
+            p.cleanUp()
             p.task_list.forEach(async t => {
                 try {
                     await handleTimeouts(t)
@@ -259,15 +277,6 @@ module.exports = {
             })
         }, 2000)
 
-        return () => {
-            try {
-                let empty = data => { }
-                clearInterval(ival)
-                clean_list.forEach(ev => ev.stopWatching(empty))
-            }
-            catch (e) {
-                console.log("Umm")
-            }
-        }
+        return cleanup
     }
 }

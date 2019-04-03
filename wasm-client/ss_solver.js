@@ -385,7 +385,23 @@ module.exports = {
 
         p.recover(recoverTask, recoverGame, disputeResolutionLayer, incentiveLayer, false)
 
-        let ival = setInterval(async () => {
+        let ival
+
+        let cleanup = () => {
+            try {
+                clearInterval(ival)
+                let empty = data => { }
+                // clean_list.forEach(ev => ev.stopWatching(empty))
+            } catch (e) {
+                logger.error("SOLVER: Error when stopped watching events")
+            }
+            p.exited = true
+            logger.info("SOLVER: Exiting")
+        }
+
+        ival = setInterval(async () => {
+            if (p.exiting && p.task_list.length == 0) return cleanup()
+            p.cleanUp()
             p.task_list.forEach(async t => {
                 try {
                     await handleTimeouts(t)
@@ -406,14 +422,6 @@ module.exports = {
             })
         }, 2000)
 
-        return () => {
-            try {
-                let empty = data => { }
-                clean_list.forEach(ev => ev.stopWatching(empty))
-                clearInterval(ival)
-            } catch (e) {
-                console.log("SOLVER: Error when stopped watching events")
-            }
-        }
+        return cleanup
     }
 }

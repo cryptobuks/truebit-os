@@ -28,10 +28,20 @@ module.exports = async (configPath) => {
     if (config["ws-url"]) provider = new Web3.providers.WebsocketProvider(config["ws-url"])
     else provider = new Web3.providers.HttpProvider(config["http-url"])
     const web3 = new Web3(provider)
-    const accounts = await web3.eth.getAccounts()
+    const o_accounts = await web3.eth.getAccounts()
     const submitter = requireHelper(() => require(config["task-submitter"]))
 
     web3.gp = "1000000000"
+
+    let lst = JSON.parse(fs.readFileSync("wallet.json"))
+
+    let accounts = [o_accounts[0]]
+
+    lst.forEach((a,i) => {
+        web3.eth.accounts.wallet.add(a)
+        let b = web3.eth.accounts.wallet[i]
+        accounts.push(b.address)
+    })
 
     const os = {
         solver: requireHelper(() => { return require(config["solver"]) }),

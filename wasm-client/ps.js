@@ -98,6 +98,11 @@ module.exports.make = async function (web3, logger, recover, account, role) {
         }
     }
 
+    res.cleanUp = function () {
+        res.task_list = res.task_list.filter(a => res.tasks[a])
+        res.game_list = res.game_list.filter(a => res.games[a])
+    }
+
     return res
 
 }
