@@ -1,11 +1,10 @@
 const BigNumber = require('bignumber.js')
 const contractsConfig = require('../../../wasm-client/util/contractsConfig')
-const contract = require('../../../wasm-client/contractHelper')
 
 module.exports = async (os) => {
 
     const config = await contractsConfig(os.web3)
-    const TRU = await contract(os.web3.currentProvider, config['tru'])
+    const tru = new os.web3.eth.Contract(config['tru'].abi, config['tru'].address)
     
     return {
 	ethBalance: async (account) => {
@@ -19,10 +18,10 @@ module.exports = async (os) => {
 	    console.log(name + " balance change ETH: " + amount)
 	},
 	truBalance: async (account) => {
-	    return new BigNumber(await tru.balanceOf.call(account))
+	    return new BigNumber(await tru.methods.balanceOf(account).call())
 	},
 	truReportDif: async (original, account, name) => {
-	    let newBalance = new BigNumber(await tru.balanceOf.call(account))
+	    let newBalance = new BigNumber(await tru.methods.balanceOf(account).call())
 
 	    let dif = newBalance.minus(original)
 

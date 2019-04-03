@@ -54,8 +54,10 @@ async function deploy() {
     let ipfsRegister = await deployContract('IpfsRegister', { from: accounts[0], gas: 5500000 })
     console.log("IPFS Register", ipfsRegister.options.address)
 
-    let fileSystem = await deployContract('Filesystem', { from: accounts[0], gas: 5600000 })
+    let fileSystem = await deployContract('Filesystem', { from: accounts[0], gas: 6600000 })
     console.log("Filesystem", fileSystem.options.address)
+    fileSystem.methods.init().send({ from: accounts[0], gas: 5600000 })
+
     let judge = await deployContract('Judge', { from: accounts[0], gas: 5600000 })
     console.log("Judge", judge.options.address)
 
@@ -64,6 +66,7 @@ async function deploy() {
 
     let tru = await deployContract('TRU', { from: accounts[0], gas: 2000000 })
     console.log("TRU", tru.options.address)
+
     let exchangeRateOracle = await deployContract('ExchangeRateOracle', { from: accounts[0], gas: 1000000 })
 
     let incentiveLayer = await deployContract(
@@ -112,7 +115,18 @@ async function deploy() {
         )
         
         console.log("Taskbook", ss_incentiveLayer.options.address)
+/*
+        let tx
+        tx = await ss_incentiveLayer.methods.requireFile("0x00", "0x00", "1").send({ from: accounts[0], gas: 2000000 })
+        console.log(tx)
+        tx = await ss_incentiveLayer.methods.requireFile("0x00", "0x00", "1").send({ from: accounts[0], gas: 2000000 })
+        console.log(tx)
+        tx = await ss_incentiveLayer.methods.requireFile("0x00", "0x00", "1").send({ from: accounts[0], gas: 2000000 })
+        console.log(tx)
 
+        tx = await ss_incentiveLayer.methods.getUploadLength("0x00").call({ from: accounts[0], gas: 2000000 })
+        console.log(tx)
+*/
         await web3.eth.sendTransaction({ from: accounts[0], to: ss_incentiveLayer.options.address, value: web3.utils.toWei("2", "ether") })
 
         await stake_whitelist.methods.setToken(tru.options.address).send({ from: accounts[0], gas: 300000 })

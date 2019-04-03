@@ -25,10 +25,6 @@ describe('Truebit OS WASM', async function() {
 	assert(os.web3)
     })
 
-    it('should have a task giver', () => {
-	assert(os.taskGiver)
-    })
-
     it('should have a solver', () => {
     	assert(os.solver)
     })
@@ -47,27 +43,22 @@ describe('Truebit OS WASM', async function() {
 	
 
 	before(async () => {
-	    taskSubmitter = await require('../wasm-client/taskSubmitter')(os.web3, os.logger)
+	    taskSubmitter = await require('../wasm-client/ss_taskSubmitter')(os.web3, os.logger)
 	    
-	    killTaskGiver = await os.taskGiver.init(os.web3, os.accounts[0], os.logger)
-	    killSolver = await os.solver.init(os, os.accounts[1])
-	    tgBalanceEth = await accounting.ethBalance(os.accounts[0])
-	    sBalanceEth = await accounting.ethBalance(os.accounts[1])
+	    killSolver = await os.solver.init(os, os.accounts[0])
+	    sBalanceEth = await accounting.ethBalance(os.accounts[0])
 
-	    tgBalanceTru = await accounting.truBalance(os.accounts[0])
-	    sBalanceTru = await accounting.truBalance(os.accounts[1])
+	    sBalanceTru = await accounting.truBalance(os.accounts[0])
 	    	    
 	})
 
 	after(async () => {
-	    killTaskGiver()
-	    killSolver()
+		killSolver()
 
-	    await accounting.ethReportDif(tgBalanceEth, os.accounts[0], "TaskGiver")
-	    await accounting.ethReportDif(sBalanceEth, os.accounts[1], "Solver")
+	    await accounting.ethReportDif(sBalanceEth, os.accounts[0], "Solver")
 
-	    await accounting.truReportDif(tgBalanceTru, os.accounts[0], "TaskGiver")
-	    await accounting.truReportDif(sBalanceTru, os.accounts[1], "Solver")
+	    await accounting.truReportDif(sBalanceTru, os.accounts[0], "Solver")
+		os.web3.currentProvider.disconnect()
 	    
 	})
 	
@@ -84,7 +75,7 @@ describe('Truebit OS WASM', async function() {
 
 	    //simulate cli by adding from account
 
-	    exampleTask["from"] = os.accounts[0]	    
+	    exampleTask["from"] = os.accounts[1]	    
 
 	    await taskSubmitter.submitTask(exampleTask)
 
@@ -94,9 +85,6 @@ describe('Truebit OS WASM', async function() {
 	    await mineBlocks(os.web3, 20)
 	    await timeout(5000)
 	    
-	    let tasks = os.taskGiver.getTasks()
-	    //taskID = Object.keys(tasks)[0]
-	    assert(Object.keys(os.taskGiver.getTasks()))
 	})
 
 	// it('should have a higher balance', async () => {

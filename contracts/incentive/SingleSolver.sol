@@ -39,8 +39,8 @@ contract SingleSolverIncentiveLayer is Ownable, ITruebit {
     uint private numTasks = 0;
     uint private taxMultiplier = 5;
 
-    uint constant BASIC_TIMEOUT = 50;
-    uint constant IPFS_TIMEOUT = 50;
+    uint constant BASIC_TIMEOUT = 5;
+    uint constant IPFS_TIMEOUT = 5;
     uint constant RUN_RATE = 100000;
     uint constant INTERPRET_RATE = 100000;
 
@@ -97,7 +97,7 @@ contract SingleSolverIncentiveLayer is Ownable, ITruebit {
 
     event EndRevealPeriod(bytes32 taskID);
     event EndChallengePeriod(bytes32 taskID);
-    event TaskFinalized(bytes32 taskID);
+    event TaskFinalized(bytes32 taskID, bool ok, bytes info, address owner);
 
     enum State { TaskInitialized, SolverSelected, SolutionCommitted, ChallengesAccepted, IntentsRevealed, SolutionRevealed, TaskFinalized, TaskTimeout }
     enum Status { Uninitialized, Challenged, Unresolved, SolverWon, ChallengerWon }//For dispute resolution
@@ -110,6 +110,7 @@ contract SingleSolverIncentiveLayer is Ownable, ITruebit {
     
     struct Task {
         address payable owner;
+        address giver;
         // address selectedSolver;
         // uint minDeposit;
         uint reward;
@@ -194,7 +195,7 @@ contract SingleSolverIncentiveLayer is Ownable, ITruebit {
         numTasks++;
 
         Task storage t = tasks[id];
-        t.owner = msg.sender;
+        t.giver = msg.sender;
         t.reward = reward;
 
         t.initTaskHash = initTaskHash;
@@ -236,19 +237,31 @@ contract SingleSolverIncentiveLayer is Ownable, ITruebit {
         return id;
     }
 
-    function requireFile(bytes32 id, bytes32 hash, StorageType st) public {
+    function requireFile(bytes32 id, bytes32 hash, StorageType st) public returns (uint) {
         Task storage t = tasks[id];
-        require (!t.requiredCommitted && msg.sender == t.owner);
+        require (!t.requiredCommitted && msg.sender == t.giver);
         t.uploads.push(RequiredFile(hash, st, 0));
+        // require(t.uploads.length > 0);
+        return t.uploads.length;
     }
     
     function commitRequiredFiles(bytes32 id) public {
         Task storage t = tasks[id];
-        require (msg.sender == t.owner);
+        require (msg.sender == t.giver);
         t.requiredCommitted = true;
         emit TaskCreated(id, t.timeoutBlock, t.reward, t.codeType, t.bundleId);
     }
     
+    function getUploadLength(bytes32 id) public view returns (uint) {
+        RequiredFile[] storage lst = tasks[id].uploads;
+        return lst.length;
+    }
+
+    function checkUploadLength(bytes32 id) public view {
+        RequiredFile[] storage lst = tasks[id].uploads;
+        require(lst.length > 0, "Urgh");
+    }
+
     function getUploadNames(bytes32 id) public view returns (bytes32[] memory) {
         RequiredFile[] storage lst = tasks[id].uploads;
         bytes32[] memory arr = new bytes32[](lst.length);
@@ -272,7 +285,7 @@ contract SingleSolverIncentiveLayer is Ownable, ITruebit {
         Task storage t = tasks[taskID];
         VMParameters storage vm = vmParams[taskID];
 
-        require(!(t.owner == address(0x0)));
+        require(!(t.giver == address(0x0)));
         require(t.state == State.TaskInitialized);
 
         require(whitelist.approved(taskID, msg.sender));
@@ -298,7 +311,7 @@ contract SingleSolverIncentiveLayer is Ownable, ITruebit {
         t.state = State.TaskTimeout;
         bool ok;
         bytes memory res;
-        (ok, res) = t.owner.call(abi.encodeWithSignature("cancel(bytes32)", taskID));
+        (ok, res) = t.giver.call(abi.encodeWithSignature("cancel(bytes32)", taskID));
     }
 
     // Change this to pull?
@@ -500,9 +513,8 @@ contract SingleSolverIncentiveLayer is Ownable, ITruebit {
         payReward(taskID);
         bool ok;
         bytes memory res;
-        (ok, res) = t.owner.call(abi.encodeWithSignature("solved(bytes32,bytes32[])", taskID, files));
-        emit TaskFinalized(taskID);
-        // Callback(t.owner).solved(taskID, files);
+        (ok, res) = t.giver.call(abi.encodeWithSignature("solved(bytes32,bytes32[])", taskID, files));
+        emit TaskFinalized(taskID, ok, res, t.giver);
 
         if (IDisputeResolutionLayer(disputeResolutionLayer).status(s.currentGame) == uint(Status.SolverWon)) {
             slashVerifier(taskID, s.currentChallenger);

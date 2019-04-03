@@ -29,17 +29,22 @@ contract FileManager is FSUtils {
     mapping (bytes32 => File) files;
 
     constructor() public {
-	zero.length = 20;
-	zero[0] = bytes32(0);
-	zero_files.length = 20;
-	zero_files[0] = empty_file;
-	for (uint i = 1; i < zero.length; i++) {
-	    zero[i] = keccak256(abi.encodePacked(zero[i-1], zero[i-1]));
-	    zero_files[i] = keccak256(abi.encodePacked(zero_files[i-1], zero_files[i-1]));
-	}
     }
 
 	event CreatedFile(bytes32 id, bytes32 root);
+
+	function init() public {
+
+		zero.length = 20;
+		zero[0] = bytes32(0);
+		zero_files.length = 20;
+		zero_files[0] = empty_file;
+		for (uint i = 1; i < zero.length; i++) {
+	    	zero[i] = keccak256(abi.encodePacked(zero[i-1], zero[i-1]));
+	    	zero_files[i] = keccak256(abi.encodePacked(zero_files[i-1], zero_files[i-1]));
+		}
+	}
+
 
     function calc_depth(uint x) internal pure returns (uint) {
         if (x <= 1) return 0;
@@ -48,20 +53,20 @@ contract FileManager is FSUtils {
 
     //Creates file out of bytes data
     function createFileWithContents(string memory name, uint nonce, bytes32[] memory arr, uint sz) public returns (bytes32) {
-	bytes32 id = keccak256(abi.encodePacked(msg.sender, nonce));
-	File storage f = files[id];
-	require(files[id].root == 0, "file exists");
-	require(arr.length == (sz+31)/32, "data size doesn't match byte size");
-	f.fileType = 0;
-	f.data = arr;
-	f.name = name;
-	f.bytesize = sz;
-	f.codeRootSet = false;
-	uint size = arr.length > 0 ? calc_depth(arr.length*2 - 1) : 0;
-	// if (size == 0) size = 1;
-	f.root = fileMerkle(arr, 0, size);
-	emit CreatedFile(id, f.root);
-	return id;
+		bytes32 id = keccak256(abi.encodePacked(msg.sender, nonce));
+		File storage f = files[id];
+		require(files[id].root == 0, "file exists");
+		require(arr.length == (sz+31)/32, "data size doesn't match byte size");
+		f.fileType = 0;
+		f.data = arr;
+		f.name = name;
+		f.bytesize = sz;
+		f.codeRootSet = false;
+		uint size = arr.length > 0 ? calc_depth(arr.length*2 - 1) : 0;
+		// if (size == 0) size = 1;
+		f.root = fileMerkle(arr, 0, size);
+		emit CreatedFile(id, f.root);
+		return id;
     }
 
 	function formatData(bytes memory data) internal pure returns (bytes32[] memory output) {

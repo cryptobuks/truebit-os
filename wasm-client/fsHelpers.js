@@ -115,7 +115,7 @@ exports.init = function (fileSystem, web3, mcFileSystem, logger, incentiveLayer,
     async function uploadOutputs(taskID, vm) {
         let lst = await incentiveLayer.methods.getUploadNames(taskID).call()
         let types = await incentiveLayer.methods.getUploadTypes(taskID).call()
-        console.log("Uploading", { names: lst, types: types })
+        console.log("Uploading", { names: lst, types: types }, taskID)
         if (lst.length == 0) return
         let proofs = await vm.fileProofs() // common.exec(config, ["-m", "-input-proofs", "-input2"])
         // var proofs = JSON.parse(proofs)
@@ -135,7 +135,7 @@ exports.init = function (fileSystem, web3, mcFileSystem, logger, incentiveLayer,
             let fname = proof.file.substr(0, proof.file.length - 4)
             let buf = await vm.readFile(proof.file)
 
-            let fileID = await uploadFile(fname, buf, types[i].toNumber())
+            let fileID = await uploadFile(fname, buf, parseInt(types[i]))
 
             await incentiveLayer.methods.uploadFile(taskID, i, fileID, proof.name, proof.data, proof.loc).send( { from: account, gas: 1000000 })
         }

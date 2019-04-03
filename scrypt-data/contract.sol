@@ -4,6 +4,8 @@ pragma solidity ^0.5.0;
 interface Filesystem {
 
    function createFileWithContents(string calldata name, uint nonce, bytes32[] calldata arr, uint sz) external returns (bytes32);
+   function createFileFromBytes(string calldata name, uint nonce, bytes calldata arr) external returns (bytes32);
+
    function getSize(bytes32 id) external view returns (uint);
    function getRoot(bytes32 id) external view returns (bytes32);
    function getData(bytes32 id) external view returns (bytes32[] memory);
@@ -19,15 +21,16 @@ interface Filesystem {
 }
 
 interface TrueBit {
-    function createTaskWithParams(bytes32 initTaskHash, uint8 codeType, bytes32 bundleID,  uint maxDifficulty, uint reward,
-                                  uint8 stack, uint8 mem, uint8 globals, uint8 table, uint8 call, uint32 limit) external returns (bytes32);
-   function requireFile(bytes32 id, bytes32 hash, /* Storage */ uint st) external;
+   function createTaskWithParams(bytes32 initTaskHash, uint8 codeType, bytes32 bundleID,  uint maxDifficulty,
+                                  uint8 stack, uint8 mem, uint8 globals, uint8 table, uint8 call, uint32 limit) external payable returns (bytes32);
+   function requireFile(bytes32 id, bytes32 hash, /* Storage */ uint8 st) external returns (uint);
    function commitRequiredFiles(bytes32 id) external;
    function makeDeposit(uint _deposit) external payable returns (uint);
-}
-
-interface TRU {
-    function approve(address spender, uint tokens) external returns (bool success);
+   function getTaskFinality(bytes32 taskID) external returns (uint);
+   function setWhitelist(address wl_addr) external;
+   function getUploadNames(bytes32 id) external returns (bytes32[] memory);
+   function getUploadLength(bytes32 id) external returns (uint);
+   function checkUploadLength(bytes32 id) external;
 }
 
 contract Scrypt {
@@ -40,7 +43,6 @@ contract Scrypt {
    uint nonce;
    TrueBit truebit;
    Filesystem filesystem;
-   TRU tru;
 
    bytes32 bundleID;
    bytes32 codeFileID;
@@ -50,38 +52,21 @@ contract Scrypt {
    mapping (bytes32 => bytes) task_to_string;
    mapping (bytes => bytes32) result;
 
-   constructor(address tb, address tru_, address fs, bytes32 _bundleID, bytes32 _codeFileID, bytes32 _initHash) public {
+   constructor(address tb, address fs, bytes32 _bundleID, bytes32 _codeFileID, bytes32 _initHash) public {
        truebit = TrueBit(tb);
-       tru = TRU(tru_);
        filesystem = Filesystem(fs);
        bundleID = _bundleID;
        codeFileID = _codeFileID;
        initHash = _initHash;
    }
 
-   function formatData(bytes memory data) public pure returns (bytes32[] memory output) {
-      //Format data
-      output = new bytes32[](data.length/32+1);
-      for (uint i = 0; i <= data.length/32; i++) {
-         uint a;
-         for (uint j = 0; j < 32; j++) {
-            a = a*256;
-            if (i*32+j < data.length) a += uint8(data[i*32+j]);
-         }
-         output[i] = bytes32(a);
-      }
-
-      return output;
-   }
+   function () external payable {}
 
    function submitData(bytes memory data) public returns (bytes32) {
       uint num = nonce;
       nonce++;
 
-      bytes32[] memory input = formatData(data);
-      emit InputData(input);
-      
-      bytes32 inputFileID = filesystem.createFileWithContents("input.data", num, input, data.length);
+      bytes32 inputFileID = filesystem.createFileFromBytes("input.data", num, data);
       string_to_file[data] = inputFileID;
       filesystem.addToBundle(bundleID, inputFileID);
       
@@ -90,24 +75,40 @@ contract Scrypt {
       
       filesystem.finalizeBundle(bundleID, codeFileID);
       
-      tru.approve(address(truebit), 1000);
-      truebit.makeDeposit(1000);
-      // string memory bstr = ;
-      bytes32 task = truebit.createTaskWithParams(filesystem.getInitHash(bundleID), 1, bundleID, 1, 1, 20, 20, 8, 20, 10, 5000);
+      bytes32 task = truebit.createTaskWithParams.value(10)(filesystem.getInitHash(bundleID), 1, bundleID, 1, 20, 20, 8, 20, 10, 5000);
       truebit.requireFile(task, filesystem.hashName("output.data"), 0);
       truebit.commitRequiredFiles(task);
+
+//      require(truebit.getUploadNames(task).length > 0);
+//      require(truebit.getUploadLength(task) > 0);
+
+//      truebit.checkUploadLength(task);
+
       task_to_string[task] = data;
       return filesystem.getInitHash(bundleID);
    }
+
+   function weird(bytes32 task) public returns (uint) {
+      // bytes32 task = truebit.createTaskWithParams.value(10)(0x0, 1, 0x0, 1, 20, 20, 8, 20, 10, 5000);
+      return truebit.requireFile(task, filesystem.hashName("output.data"), 0);
+      //uint l2 = truebit.requireFile(task, filesystem.hashName("output.data"), 0);
+      //uint l3 = truebit.requireFile(task, filesystem.hashName("output.data"), 0);
+      // truebit.checkUploadLength(task);
+      // return truebit.getUploadLength(task) + l1; // + l2 + l3;
+   }
+/*
+   function weird(bytes32 arg) public returns (uint) {
+      bytes32 task = truebit.createTaskWithParams.value(10)(0x0, 1, 0x0, 1, 20, 20, 8, 20, 10, 5000);
+      truebit.requireFile(task, filesystem.hashName("output.data"), 0);
+      // truebit.checkUploadLength(task);
+      return truebit.getUploadLength(task);
+   }*/
 
    function debug(bytes memory data) public returns (bytes32) {
       uint num = nonce;
       nonce++;
 
-      bytes32[] memory input = formatData(data);
-      emit InputData(input);
-      
-      bytes32 inputFileID = filesystem.createFileWithContents("input.data", num, input, data.length);
+      bytes32 inputFileID = filesystem.createFileFromBytes("input.data", num, data);
       string_to_file[data] = inputFileID;
       filesystem.addToBundle(bundleID, inputFileID);
       
@@ -116,23 +117,21 @@ contract Scrypt {
       
       filesystem.finalizeBundle(bundleID, codeFileID);
       
-      tru.approve(address(truebit), 1000);
-      truebit.makeDeposit(1000);
-
       return filesystem.getInitHash(bundleID);
    }
 
    bytes32 remember_task;
 
    // this is the callback name
-   function solved(bytes32 id, bytes32[] memory files) public {
+   function solved(bytes32 id, bytes32[] calldata files) external returns (uint) {
+      emit GotFiles(files);
       // could check the task id
       require(TrueBit(msg.sender) == truebit);
       remember_task = id;
-      emit GotFiles(files);
       bytes32[] memory arr = filesystem.getData(files[0]);
       emit Consuming(arr);
       result[task_to_string[remember_task]] = arr[0];
+      return 123;
    }
 
    // need some way to get next state, perhaps shoud give all files as args

@@ -9,8 +9,6 @@ const mineBlocks = require('../os/lib/util/mineBlocks')
 const fs = require('fs')
 
 const logger = require('../os/logger')
-const contract = require('../wasm-client/contractHelper')
-var truffle_contract = require("truffle-contract");
 
 const contractsConfig = require('../wasm-client/util/contractsConfig')
 const merkleComputer = require('../wasm-client/merkle-computer')()
@@ -23,6 +21,10 @@ const info = JSON.parse(fs.readFileSync("./scrypt-data/info.json"))
 let account
 let web3
 
+function contract(web3, info) {
+    return new web3.eth.Contract(info.abi, info.address)    
+}
+
 const ipfs = require('ipfs-api')(config.ipfs.host, '5001', { protocol: 'http' })
 const fileSystem = merkleComputer.fileSystem(ipfs)
 
@@ -30,7 +32,7 @@ before(async () => {
 	os = await require('../os/kernel')("./wasm-client/config.json")
 	accounting = await require('../os/lib/util/accounting')(os)
 
-	account = os.accounts[0]
+	account = os.accounts[1]
 	web3 = os.web3
 })
 
@@ -58,32 +60,34 @@ describe('Truebit OS WASM Scrypt test', async function () {
 
 		before(async () => {
 			cConfig = await contractsConfig(web3)
-			tbFilesystem = await contract(web3.currentProvider, cConfig['fileSystem'])
-			tru = await contract(web3.currentProvider, cConfig['tru'])
-			killSolver = await os.solver.init(os, os.accounts[1])
+			tbFilesystem = contract(web3, cConfig['fileSystem'])
+			// tru = contract(web3.currentProvider, cConfig['tru'])
+			killSolver = await os.solver.init(os, os.accounts[0])
 
 			tgBalanceEth = await accounting.ethBalance(account)
-			sBalanceEth = await accounting.ethBalance(os.accounts[1])
+			sBalanceEth = await accounting.ethBalance(os.accounts[0])
 
 			tgBalanceTru = await accounting.truBalance(account)
-			sBalanceTru = await accounting.truBalance(os.accounts[1])
+			sBalanceTru = await accounting.truBalance(os.accounts[0])
 		})
 
 		after(async () => {
 			killSolver()
 
 			await accounting.ethReportDif(tgBalanceEth, account, "TaskGiver")
-			await accounting.ethReportDif(sBalanceEth, os.accounts[1], "Solver")
+			await accounting.ethReportDif(sBalanceEth, os.accounts[0], "Solver")
 
 			await accounting.truReportDif(tgBalanceTru, account, "TaskGiver")
-			await accounting.truReportDif(sBalanceTru, os.accounts[1], "Solver")
+			await accounting.truReportDif(sBalanceTru, os.accounts[0], "Solver")
+
+			os.web3.currentProvider.disconnect()
 
 		})
 
-		it("should start a bundle", async () => {
-			let nonce = Math.floor(Math.random() * Math.pow(2, 60))
-			bundleID = await tbFilesystem.calcId.call(nonce)
-			await tbFilesystem.makeBundle(nonce, { from: account, gas: 300000 })
+		it("should create a bundle", async () => {
+			let nonce = Math.floor(Math.random() * Math.pow(2, 60)).toString()
+			bundleID = await tbFilesystem.methods.calcId(nonce).call({from:account})
+			await tbFilesystem.methods.makeBundle(nonce).send({ from: account, gas: 300000 })
 		})
 
 		it('should upload task code', async () => {
@@ -95,13 +99,13 @@ describe('Truebit OS WASM Scrypt test', async function () {
 			let name = ipfsFile.path
 
 			let merkleRoot = merkleComputer.merkleRoot(os.web3, codeBuf)
-			let nonce = Math.floor(Math.random() * Math.pow(2, 60))
+			let nonce = Math.floor(Math.random() * Math.pow(2, 60)).toString()
 
 			assert.equal(ipfsHash, info.ipfshash)
 
-			codeFileID = await tbFilesystem.calcId.call(nonce, {from:account})
+			codeFileID = await tbFilesystem.methods.calcId(nonce).call({from:account})
 
-			await tbFilesystem.addIPFSCodeFile(name, size, ipfsHash, merkleRoot, info.codehash, nonce, { from: account, gas: 300000 })
+			await tbFilesystem.methods.addIPFSCodeFile(name, size, ipfsHash, merkleRoot, info.codehash, nonce).send({ from: account, gas: 300000 })
 		})
 
 		let scrypt_contract
@@ -118,28 +122,34 @@ describe('Truebit OS WASM Scrypt test', async function () {
 
 			let abi = JSON.parse(fs.readFileSync("./scrypt-data/compiled/Scrypt.abi"))
 
-			let contr = await deployContract(
+			scrypt_contract = await deployContract(
 				abi,
 				fs.readFileSync("./scrypt-data/compiled/Scrypt.bin"),
-				[cConfig.incentiveLayer.address,cConfig.tru.address, cConfig.fileSystem.address, bundleID, codeFileID, info.codehash],
+				[cConfig.ss_incentiveLayer.address, cConfig.fileSystem.address, bundleID, codeFileID, info.codehash],
 				{ from: account, gas: 2000000 })
 			
-			scrypt_contract = await contract(web3.currentProvider, {abi:abi, address:contr.options.address})
+				await web3.eth.sendTransaction({to:scrypt_contract.options.address, value:"1000000000000000000", from: os.accounts[0], gas: 200000 })
+				/*
+				await scrypt_contract.methods.weird("0x00").send({ from: account, gas: 2000000 })
+				await scrypt_contract.methods.weird("0x00").send({ from: account, gas: 2000000 })
+				await scrypt_contract.methods.weird("0x00").send({ from: account, gas: 2000000 })
+				await scrypt_contract.methods.weird("0x00").send({ from: account, gas: 2000000 })
+			console.log(await scrypt_contract.methods.weird("0x00").call({ from: account, gas: 2000000 }))
+*/
 
-			let result_event = scrypt_contract.GotFiles()
-			result_event.watch(async (err, result) => {
-				console.log("got event, file ID", result.args.files[0])
-				result_event.stopWatching(data => { })
-				let fileid = result.args.files[0]
-				var lst = await tbFilesystem.getData(fileid)
+			//	scrypt_contract.once("GotFiles", async ev => {
+			scrypt_contract.events.GotFiles(async (err,ev) => {
+				console.log("got event, file ID", ev.returnValues.files[0])
+				let fileid = ev.returnValues.files[0]
+				var lst = await tbFilesystem.methods.getData(fileid).call()
 				console.log("got stuff", lst)
 				scrypt_result = lst[0]
 			})
-			await tru.transfer(scrypt_contract.address, "100000000000", { from: account, gas: 200000 })
 		})
 
 		it('should submit task', async () => {
-			await scrypt_contract.submitData("testing", { from: account, gas: 2000000 })
+			let str = "0x" + Buffer.from("testing").toString("hex")
+			await scrypt_contract.methods.submitData(str).send({ from: account, gas: 4000000 })
 		})
 
 		it('wait for task', async () => {

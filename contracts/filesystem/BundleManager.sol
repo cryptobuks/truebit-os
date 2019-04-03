@@ -17,6 +17,8 @@ contract BundleManager is FileManager {
 
     mapping (bytes32 => Bundle) bundles;
 
+	constructor() public FileManager() {}
+
     function makeBundle(uint num) public view returns (bytes32) {
 	bytes32 id = keccak256(abi.encodePacked(msg.sender, num));
 	return id;

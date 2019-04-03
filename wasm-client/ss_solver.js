@@ -94,6 +94,8 @@ module.exports = {
         p.addEvent("TaskFinalized", incentiveLayer.events.TaskFinalized, async (result) => {
             let taskID = result.taskID
 
+            console.log(result)
+
             if (p.tasks[taskID]) {
                 delete p.tasks[taskID]
                 logger.info(`SOLVER: Task ${taskID} finalized.`)
