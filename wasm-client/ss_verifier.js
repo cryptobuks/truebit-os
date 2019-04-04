@@ -133,7 +133,7 @@ module.exports = {
 
                 let num = reportedStateHash == stateHash ? 1 : 0
 
-                await disputeResolutionLayer.methods.query(gameID, lowStep, highStep, num).send({ from: account })
+                await disputeResolutionLayer.methods.query(gameID, lowStep, highStep, num).send({ from: account, gas: 100000 })
 
             }
         })
@@ -151,14 +151,14 @@ module.exports = {
                 let taskID = p.games[gameID].taskID
 
                 if (test) {
-                    await disputeResolutionLayer.methods.selectPhase(gameID, lowStep, phases[3], 3).send({ from: account })
+                    await disputeResolutionLayer.methods.selectPhase(gameID, lowStep, phases[3], 3).send({ from: account, gas: 100000 })
                 } else {
 
                     let states = (await p.tasks[taskID].vm.getStep(lowStep, p.tasks[taskID].interpreterArgs)).states
 
                     for (let i = 0; i < phases.length; i++) {
                         if (states[i] != phases[i]) {
-                            await disputeResolutionLayer.methods.selectPhase(gameID, lowStep, phases[i], i).send({ from: account })
+                            await disputeResolutionLayer.methods.selectPhase(gameID, lowStep, phases[i], i).send({ from: account, gas: 100000 })
                             return
                         }
                     }
@@ -200,7 +200,7 @@ module.exports = {
             if (await disputeResolutionLayer.methods.gameOver(gameID).call()) {
                 p.working(gameID)
 
-                logger.info(`Triggering game over, game: ${gameID}`)
+                logger.info(`VERIFIER: Triggering game over, game: ${gameID}`)
 
                 await disputeResolutionLayer.methods.gameOver(gameID).send({ from: account })
             }

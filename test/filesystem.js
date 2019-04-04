@@ -63,7 +63,7 @@ describe('Truebit Filesystem Smart Contract Unit Tests', function () {
     let accounts, web3, filesystem
 
     before(async () => {
-        let os = await require('../os/kernel')('./wasm-client/ss_config.json')
+        let os = await require('../os/kernel')('./wasm-client/config.json')
 
         let contracts = await setup(os.web3)
         filesystem = contracts[0]
@@ -71,6 +71,10 @@ describe('Truebit Filesystem Smart Contract Unit Tests', function () {
         web3 = os.web3
 
         accounts = [os.accounts[0]]
+    })
+
+    after(async () => {
+        web3.currentProvider.disconnect()
     })
 
     let rnd = Math.floor(Math.random()*1000000)

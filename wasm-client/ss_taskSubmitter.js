@@ -86,7 +86,7 @@ module.exports = async (web3, logger, mcFileSystem) => {
         let ipfsHash = ipfsFile.hash
         let name = ipfsFile.path
 
-        let randomNum = Math.floor(Math.random() * Math.pow(2, 60))
+        let randomNum = Math.floor(Math.random() * Math.pow(2, 60)).toString()
         let size = codeBuf.byteLength
         let codeRoot = await getCodeRoot(config, dirPath)
 
@@ -131,7 +131,7 @@ module.exports = async (web3, logger, mcFileSystem) => {
             let fileSize = fileBuf.byteLength
             let fileRoot = merkleComputer.merkleRoot(web3, fileBuf)
 
-            let fileNonce = Math.floor(Math.random() * Math.pow(2, 60))
+            let fileNonce = Math.floor(Math.random() * Math.pow(2, 60)).toString()
 
             let fileIPFSHash = (await mcFileSystem.upload(fileBuf, "bundle/" + fileName))[0].hash
 
@@ -144,10 +144,10 @@ module.exports = async (web3, logger, mcFileSystem) => {
                 fileRoot,
                 fileNonce).send({ from: from, gas: 200000 })
 
-            await tbFileSystem.methods.addToBundle(bundleID, fileID).send({ from: from })
+            await tbFileSystem.methods.addToBundle(bundleID, fileID).send({ from: from, gas: 100000 })
         }
 
-        let randomNum = Math.floor(Math.random() * Math.pow(2, 60))
+        let randomNum = Math.floor(Math.random() * Math.pow(2, 60)).toString()
         let codeFileId = await tbFileSystem.methods.calcId(randomNum).call({ from: from })
 
         config.files = newFiles

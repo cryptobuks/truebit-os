@@ -93,7 +93,7 @@ describe('Truebit Whitelist Smart Contract Unit Tests', function () {
     let accounts, wl, taskBook, web3, tru, startBlock
 
     before(async () => {
-        let os = await require('../os/kernel')('./wasm-client/ss_config.json')
+        let os = await require('../os/kernel')('./wasm-client/config.json')
 
         let contracts = await setup(os.web3)
         wl = contracts[0]
@@ -105,19 +105,23 @@ describe('Truebit Whitelist Smart Contract Unit Tests', function () {
         accounts = [os.accounts[0], os.accounts[1], os.accounts[2], os.accounts[3]]
     })
 
+    after(async () => {
+        web3.currentProvider.disconnect()
+    })
+
     it("participants should make a deposit", async () => {
 
         const deposit = web3.utils.toWei("100", "ether")
 
         for(let account of accounts) {
-            await tru.methods.getTestTokens().send({ from: account })
+            await tru.methods.getTestTokens().send({ from: account, gas: 100000 })
         }
         for(let account of accounts) {
-            await tru.methods.approve(wl.options.address, deposit).send({ from: account })
+            await tru.methods.approve(wl.options.address, deposit).send({ from: account, gas: 100000 })
         }
     
         for(let account of accounts) {
-            await wl.methods.makeDeposit(deposit).send({from:account})
+            await wl.methods.makeDeposit(deposit).send({from:account, gas: 100000})
         }
 
         startBlock = await web3.eth.getBlockNumber()
@@ -148,14 +152,14 @@ describe('Truebit Whitelist Smart Contract Unit Tests', function () {
         task = makeRandom(32)
         let solution = makeRandom(32)
 
-        await taskBook.methods.addTask(task, solution).send({from:accounts[0]})
+        await taskBook.methods.addTask(task, solution).send({from:accounts[0], gas: 100000})
         await mineBlocks(web3, 1)
 
         solver = await findSolver(wl, startBlock, task)
 
         // console.log("Solver ticket", solver)
 
-        await wl.methods.useTicket(solver.ticket, task).send({from:solver.owner})
+        await wl.methods.useTicket(solver.ticket, task).send({from:solver.owner, gas: 100000})
 
         let valid = await wl.methods.validTicket(solver.ticket).call()
 
@@ -171,12 +175,12 @@ describe('Truebit Whitelist Smart Contract Unit Tests', function () {
         assert.equal(tickets.length, accounts.length*2-1)
         let solver = tickets[0]
 
-        await expectError(wl.methods.useTicket(solver.ticket, task).send({from:solver.owner}))
+        await expectError(wl.methods.useTicket(solver.ticket, task).send({from:solver.owner, gas: 100000}))
 
     })
 
     it("releasing ticket", async () => {
-        await taskBook.methods.finalizeTask(task).send({from:solver.owner})
+        await taskBook.methods.finalizeTask(task).send({from:solver.owner, gas: 100000})
         await wl.methods.releaseTicket(solver.ticket).send({from:solver.owner, gas:1000000})
 
         let evs = await wl.getPastEvents("SlashedTicket", {fromBlock:startBlock})
@@ -228,7 +232,7 @@ describe('Truebit Whitelist Smart Contract Unit Tests', function () {
     })
 
     it("releasing ticket again", async () => {
-        await taskBook.methods.finalizeTask(task).send({from:solver.owner})
+        await taskBook.methods.finalizeTask(task).send({from:solver.owner, gas: 100000})
 
         await wl.methods.releaseTicket(solver.ticket).send({from:solver.owner, gas:1000000})
 
@@ -242,7 +246,7 @@ describe('Truebit Whitelist Smart Contract Unit Tests', function () {
         task = makeRandom(32)
         let solution = makeRandom(32)
 
-        await taskBook.methods.addTask(task, solution).send({from:accounts[0]})
+        await taskBook.methods.addTask(task, solution).send({from:accounts[0], gas: 100000})
         await mineBlocks(web3, 1)
 
         let tickets = await getTickets(wl, startBlock)
@@ -255,7 +259,7 @@ describe('Truebit Whitelist Smart Contract Unit Tests', function () {
 
         // console.log("Solver ticket", solver)
 
-        await wl.methods.useTicket(solver.ticket, task).send({from:solver.owner})
+        await wl.methods.useTicket(solver.ticket, task).send({from:solver.owner, gas: 100000})
 
         let valid = await wl.methods.validTicket(solver.ticket).call()
 
@@ -277,7 +281,7 @@ describe('Truebit Whitelist Smart Contract Unit Tests', function () {
     })
 
     it("releasing ticket, should get slashed", async () => {
-        await taskBook.methods.finalizeTask(task).send({from:solver.owner})
+        await taskBook.methods.finalizeTask(task).send({from:solver.owner, gas: 100000})
         await wl.methods.releaseTicket(solver.ticket).send({from:solver.owner, gas:1000000})
 
         let evs = await wl.getPastEvents("SlashedTicket", {fromBlock:startBlock})
@@ -291,7 +295,7 @@ describe('Truebit Whitelist Smart Contract Unit Tests', function () {
         task = makeRandom(32)
         let solution = makeRandom(32)
 
-        await taskBook.methods.addTask(task, solution).send({from:accounts[0]})
+        await taskBook.methods.addTask(task, solution).send({from:accounts[0], gas: 100000})
         await mineBlocks(web3, 1)
 
         let tickets = await getTickets(wl, startBlock)
@@ -303,7 +307,7 @@ describe('Truebit Whitelist Smart Contract Unit Tests', function () {
 
         // console.log("Solver ticket", solver)
 
-        await wl.methods.useTicket(solver.ticket, task).send({from:solver.owner})
+        await wl.methods.useTicket(solver.ticket, task).send({from:solver.owner, gas: 100000})
 
         let valid = await wl.methods.validTicket(solver.ticket).call()
 
@@ -325,7 +329,7 @@ describe('Truebit Whitelist Smart Contract Unit Tests', function () {
     })
 
     it("releasing ticket, should get slashed", async () => {
-        await taskBook.methods.finalizeTask(task).send({from:solver.owner})
+        await taskBook.methods.finalizeTask(task).send({from:solver.owner, gas: 100000})
 
         let verifiers = await wl.methods.debugVerifiers(solver.ticket).call()
         let solvers = await wl.methods.debugSolvers(solver.ticket).call()
@@ -344,7 +348,7 @@ describe('Truebit Whitelist Smart Contract Unit Tests', function () {
         task = makeRandom(32)
         let solution = makeRandom(32)
 
-        await taskBook.methods.addTask(task, solution).send({from:accounts[0]})
+        await taskBook.methods.addTask(task, solution).send({from:accounts[0], gas: 100000})
         await mineBlocks(web3, 1)
 
         let tickets = await getTickets(wl, startBlock)
@@ -357,7 +361,7 @@ describe('Truebit Whitelist Smart Contract Unit Tests', function () {
 
         // console.log("Solver ticket", solver)
 
-        await wl.methods.useTicket(solver.ticket, task).send({from:solver.owner})
+        await wl.methods.useTicket(solver.ticket, task).send({from:solver.owner, gas: 100000})
 
         let valid = await wl.methods.validTicket(solver.ticket).call()
 
@@ -379,7 +383,7 @@ describe('Truebit Whitelist Smart Contract Unit Tests', function () {
     })
 
     it("releasing ticket again", async () => {
-        await taskBook.methods.failTask(task).send({from:solver.owner})
+        await taskBook.methods.failTask(task).send({from:solver.owner, gas: 100000})
 
         await wl.methods.failedTicket(solver.ticket).send({from:solver.owner, gas:1000000})
 

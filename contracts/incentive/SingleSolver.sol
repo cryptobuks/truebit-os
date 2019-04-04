@@ -343,7 +343,7 @@ contract SingleSolverIncentiveLayer is Ownable, ITruebit {
         Task storage t = tasks[taskID];
         Solution storage s = solutions[taskID];
         uint g_timeout = IDisputeResolutionLayer(disputeResolutionLayer).timeoutBlock(s.currentGame);
-        require(block.number > g_timeout);
+        require(block.number > g_timeout + BASIC_TIMEOUT);
         require(block.number > t.timeoutBlock + BASIC_TIMEOUT);
         require(t.state != State.TaskTimeout);
         require(t.state != State.TaskFinalized);
@@ -355,7 +355,7 @@ contract SingleSolverIncentiveLayer is Ownable, ITruebit {
         Task storage t = tasks[taskID];
         Solution storage s = solutions[taskID];
         uint g_timeout = IDisputeResolutionLayer(disputeResolutionLayer).timeoutBlock(s.currentGame);
-        if (block.number <= g_timeout) return false;
+        if (block.number <= g_timeout + BASIC_TIMEOUT) return false;
         if (t.state == State.TaskTimeout) return false;
         if (t.state == State.TaskFinalized) return false;
         if (block.number <= t.timeoutBlock + BASIC_TIMEOUT) return false;
@@ -568,7 +568,7 @@ contract SingleSolverIncentiveLayer is Ownable, ITruebit {
 
     function getTaskInfo(bytes32 taskID) public view returns (address, bytes32, CodeType, bytes32, bytes32) {
         Task storage t = tasks[taskID];
-        return (t.owner, t.initTaskHash, t.codeType, t.bundleId, taskID);
+        return (t.giver, t.initTaskHash, t.codeType, t.bundleId, taskID);
     }
 
     function getSolutionInfo(bytes32 taskID) public view returns(bytes32, bytes32, bytes32, CodeType, bytes32) {

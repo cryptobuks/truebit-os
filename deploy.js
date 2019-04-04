@@ -115,19 +115,8 @@ async function deploy() {
         )
         
         console.log("Taskbook", ss_incentiveLayer.options.address)
-/*
-        let tx
-        tx = await ss_incentiveLayer.methods.requireFile("0x00", "0x00", "1").send({ from: accounts[0], gas: 2000000 })
-        console.log(tx)
-        tx = await ss_incentiveLayer.methods.requireFile("0x00", "0x00", "1").send({ from: accounts[0], gas: 2000000 })
-        console.log(tx)
-        tx = await ss_incentiveLayer.methods.requireFile("0x00", "0x00", "1").send({ from: accounts[0], gas: 2000000 })
-        console.log(tx)
 
-        tx = await ss_incentiveLayer.methods.getUploadLength("0x00").call({ from: accounts[0], gas: 2000000 })
-        console.log(tx)
-*/
-        await web3.eth.sendTransaction({ from: accounts[0], to: ss_incentiveLayer.options.address, value: web3.utils.toWei("2", "ether") })
+        await web3.eth.sendTransaction({ from: accounts[0], to: ss_incentiveLayer.options.address, value: web3.utils.toWei("2000", "ether") })
 
         await stake_whitelist.methods.setToken(tru.options.address).send({ from: accounts[0], gas: 300000 })
         await stake_whitelist.methods.setTaskBook(testbook.options.address).send({ from: accounts[0], gas: 300000 })
@@ -149,14 +138,9 @@ async function deploy() {
 
         // Mint tokens for testing
         for (let addr of lst) {
-            await web3.eth.sendTransaction({ from: accounts[0], to: addr, value: web3.utils.toWei("2", "ether") })
+            await web3.eth.sendTransaction({ from: accounts[0], to: addr, value: web3.utils.toWei("2000", "ether") })
             await tru.methods.addMinter(addr).send({ from: accounts[0], gas: 300000 })
-            // let x = await tru.methods.isMinter(addr).call()
-            // console.log("add minter", addr, x)
             await tru.methods.mint(addr, "100000000000000000000000").send({ from: addr, gas: 300000 })
-            // await tru.methods.mint(addr, "100000000000000000000000").send({ from: accounts[0], gas: 300000 })
-            // let v = await tru.methods.balanceOf(addr).call()
-            // console.log("???", v)
         }
     }
 

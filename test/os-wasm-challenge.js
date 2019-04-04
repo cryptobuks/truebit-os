@@ -1,16 +1,6 @@
 const assert = require('assert')
-
 const timeout = require('../os/lib/util/timeout')
-
-const BigNumber = require('bignumber.js')
-
 const mineBlocks = require('../os/lib/util/mineBlocks')
-
-const fs = require('fs')
-
-const logger = require('../os/logger')
-
-const merkleComputer = require('../wasm-client/merkle-computer')()
 
 let os
 
@@ -32,10 +22,6 @@ describe('Truebit OS WASM Challenge', async function() {
 	assert(os.web3)
     })
 
-    it('should have a task giver', () => {
-	assert(os.taskGiver)
-    })
-
     it('should have a solver', () => {
     	assert(os.solver)
     })
@@ -45,45 +31,40 @@ describe('Truebit OS WASM Challenge', async function() {
     })
     
     describe('Task lifecycle with challenge', async () => {
-	let killTaskGiver
 	let killSolver
 	let killVerifier
-
-	let taskID
-
-	let storageAddress, initStateHash
 
 	let tgBalanceEth, sBalanceEth, tgBalanceTru, sBalanceTru, vBalanceEth, vBalanceTru	
 	
 
 	before(async () => {
-	    taskSubmitter = await require('../wasm-client/taskSubmitter')(os.web3, os.logger)
+	    taskSubmitter = await require('../wasm-client/ss_taskSubmitter')(os.web3, os.logger)
 	    
-	    killTaskGiver = await os.taskGiver.init(os.web3, os.accounts[0], os.logger)
-	    killSolver = await os.solver.init(os, os.accounts[1], os)
+	    killSolver = await os.solver.init(os, os.accounts[0], os)
 	    killVerifier = await os.verifier.init(os, os.accounts[2], os, undefined, true, 1)
 
-	    tgBalanceEth = await accounting.ethBalance(os.accounts[0])
-	    sBalanceEth = await accounting.ethBalance(os.accounts[1])
+	    tgBalanceEth = await accounting.ethBalance(os.accounts[1])
+	    sBalanceEth = await accounting.ethBalance(os.accounts[0])
 	    vBalanceEth = await accounting.ethBalance(os.accounts[2])	    
 
-	    tgBalanceTru = await accounting.truBalance(os.accounts[0])
-	    sBalanceTru = await accounting.truBalance(os.accounts[1])
+	    tgBalanceTru = await accounting.truBalance(os.accounts[1])
+	    sBalanceTru = await accounting.truBalance(os.accounts[0])
 	    vBalanceTru = await accounting.truBalance(os.accounts[2])	 	    
 	})
 
 	after(async () => {
-	    killTaskGiver()
 	    killSolver()
 	    killVerifier()
 
-	    await accounting.ethReportDif(tgBalanceEth, os.accounts[0], "TaskGiver")
-	    await accounting.ethReportDif(sBalanceEth, os.accounts[1], "Solver")
+	    await accounting.ethReportDif(tgBalanceEth, os.accounts[1], "TaskGiver")
+	    await accounting.ethReportDif(sBalanceEth, os.accounts[0], "Solver")
 	    await accounting.ethReportDif(vBalanceEth, os.accounts[2], "Verifier")	    
 
-	    await accounting.truReportDif(tgBalanceTru, os.accounts[0], "TaskGiver")
-	    await accounting.truReportDif(sBalanceTru, os.accounts[1], "Solver")
-	    await accounting.truReportDif(vBalanceTru, os.accounts[2], "Verifier")	    
+	    await accounting.truReportDif(tgBalanceTru, os.accounts[1], "TaskGiver")
+	    await accounting.truReportDif(sBalanceTru, os.accounts[0], "Solver")
+		await accounting.truReportDif(vBalanceTru, os.accounts[2], "Verifier")
+		
+		os.web3.currentProvider.disconnect()
 	})
 
 	it('should submit task', async () => {
@@ -99,7 +80,7 @@ describe('Truebit OS WASM Challenge', async function() {
 
 	    //simulate cli by adding from account and translate reward
 
-	    exampleTask["from"] = os.accounts[0]	    
+	    exampleTask["from"] = os.accounts[1]
 
 	    await taskSubmitter.submitTask(exampleTask)
 
@@ -108,12 +89,9 @@ describe('Truebit OS WASM Challenge', async function() {
 	    // console.log("VERIFIER should have challenged by now")
 	    await mineBlocks(os.web3, 15)
 	    await timeout(5000)
-	    await mineBlocks(os.web3, 15)
+	    await mineBlocks(os.web3, 10)
 	    await timeout(30000)
 	    
-	    let tasks = os.taskGiver.getTasks()
-	    //taskID = Object.keys(tasks)[0]
-	    assert(Object.keys(os.taskGiver.getTasks()))
 	})
 
 	// it('should have a higher balance', async () => {

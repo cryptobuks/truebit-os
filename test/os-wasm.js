@@ -1,9 +1,6 @@
 const assert = require('assert')
 const timeout = require('../os/lib/util/timeout')
-const BigNumber = require('bignumber.js')
 const mineBlocks = require('../os/lib/util/mineBlocks')
-const fs = require('fs')
-const logger = require('../os/logger')
 
 let os, accounting
 
@@ -30,16 +27,10 @@ describe('Truebit OS WASM', async function() {
     })
     
     describe('Normal task lifecycle', async () => {
-	let killTaskGiver
 	let killSolver
-	let killVerifier
-
-	let taskID
 	
 	let tgBalanceEth, sBalanceEth
 	let tgBalanceTru, sBalanceTru
-
-	let storageAddress, initStateHash
 	
 
 	before(async () => {

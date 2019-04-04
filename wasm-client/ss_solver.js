@@ -33,6 +33,8 @@ module.exports = {
 
         p.addEvent("TaskCreated", incentiveLayer.events.TaskCreated, async (result) => {
 
+            if (p.exiting) return
+
             let taskID = result.taskID
 
             logger.info(`SOLVER: Task ${taskID} has been posted. Going to solve it.`)
@@ -93,8 +95,6 @@ module.exports = {
 
         p.addEvent("TaskFinalized", incentiveLayer.events.TaskFinalized, async (result) => {
             let taskID = result.taskID
-
-            console.log(result)
 
             if (p.tasks[taskID]) {
                 delete p.tasks[taskID]
@@ -160,7 +160,7 @@ module.exports = {
 
                 let stateHash = await p.tasks[taskID].vm.getLocation(stepNumber, p.tasks[taskID].interpreterArgs)
 
-                await disputeResolutionLayer.methods.report(gameID, indices.low, indices.high, [stateHash]).send({ from: account })
+                await disputeResolutionLayer.methods.report(gameID, indices.low, indices.high, [stateHash]).send({ from: account, gas:100000 })
 
                 logger.info(`SOLVER: Reported state hash for step: ${stepNumber} game: ${gameID} low: ${indices.low} high: ${indices.high}`)
 
@@ -183,7 +183,7 @@ module.exports = {
 
                     let stateHash = await p.tasks[taskID].vm.getLocation(stepNumber, p.tasks[taskID].interpreterArgs)
 
-                    await disputeResolutionLayer.methods.report(gameID, lowStep, highStep, [stateHash]).send({ from: account })
+                    await disputeResolutionLayer.methods.report(gameID, lowStep, highStep, [stateHash]).send({ from: account, gas:100000 })
 
                     logger.info(`SOLVER: Reported state for step ${stepNumber}`)
 
