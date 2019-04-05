@@ -117,54 +117,52 @@ module.exports = {
         p.addEvent("Reported", disputeResolutionLayer.events.Reported, async result => {
             let gameID = result.gameID
 
-            if (p.games[gameID]) {
+            if (!p.games[gameID]) return
 
-                let lowStep = parseInt(result.idx1)
-                let highStep = parseInt(result.idx2)
-                let taskID = p.games[gameID].taskID
+            let lowStep = parseInt(result.idx1)
+            let highStep = parseInt(result.idx2)
+            let taskID = p.games[gameID].taskID
 
-                logger.info(`VERIFIER: Report received game: ${gameID} low: ${lowStep} high: ${highStep}`)
+            logger.info(`VERIFIER: Report received game: ${gameID} low: ${lowStep} high: ${highStep}`)
 
-                let stepNumber = midpoint(lowStep, highStep)
+            let stepNumber = midpoint(lowStep, highStep)
 
-                let reportedStateHash = await disputeResolutionLayer.methods.getStateAt(gameID, stepNumber).call()
+            let reportedStateHash = result.arr[0]
 
-                let stateHash = await p.tasks[taskID].vm.getLocation(stepNumber, p.tasks[taskID].interpreterArgs)
+            let stateHash = await p.tasks[taskID].vm.getLocation(stepNumber, p.tasks[taskID].interpreterArgs)
 
-                let num = reportedStateHash == stateHash ? 1 : 0
+            let num = reportedStateHash == stateHash ? 1 : 0
 
-                await disputeResolutionLayer.methods.query(gameID, lowStep, highStep, num).send({ from: account, gas: 100000 })
+            await disputeResolutionLayer.methods.query(gameID, lowStep, highStep, num, result.report_hash).send({ from: account, gas: 100000 })
 
-            }
         })
 
         p.addEvent("PostedPhases", disputeResolutionLayer.events.PostedPhases, async result => {
             let gameID = result.gameID
 
-            if (p.games[gameID]) {
+            if (!p.games[gameID]) return
 
-                logger.info(`VERIFIER: Phases posted for game: ${gameID}`)
-                
-                let lowStep = result.idx1
-                let phases = result.arr
+            logger.info(`VERIFIER: Phases posted for game: ${gameID}`)
 
-                let taskID = p.games[gameID].taskID
+            let lowStep = result.idx1
+            let phases = result.arr
 
-                if (test) {
-                    await disputeResolutionLayer.methods.selectPhase(gameID, lowStep, phases[3], 3).send({ from: account, gas: 100000 })
-                } else {
+            let taskID = p.games[gameID].taskID
 
-                    let states = (await p.tasks[taskID].vm.getStep(lowStep, p.tasks[taskID].interpreterArgs)).states
+            if (test) {
+                await disputeResolutionLayer.methods.selectPhase(gameID, lowStep, phases[3], 3).send({ from: account, gas: 100000 })
+            } else {
 
-                    for (let i = 0; i < phases.length; i++) {
-                        if (states[i] != phases[i]) {
-                            await disputeResolutionLayer.methods.selectPhase(gameID, lowStep, phases[i], i).send({ from: account, gas: 100000 })
-                            return
-                        }
+                let states = (await p.tasks[taskID].vm.getStep(lowStep, p.tasks[taskID].interpreterArgs)).states
+
+                for (let i = 0; i < phases.length; i++) {
+                    if (states[i] != phases[i]) {
+                        await disputeResolutionLayer.methods.selectPhase(gameID, lowStep, phases[i], i).send({ from: account, gas: 100000 })
+                        return
                     }
                 }
-
             }
+
         })
 
         p.addEvent("WinnerSelected", disputeResolutionLayer.events.WinnerSelected, async (result) => {

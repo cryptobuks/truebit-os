@@ -84,6 +84,8 @@ contract Interactive is IGameMaker, IDisputeResolutionLayer {
         State state;
         Status status;
         
+        bytes32 report_hash;
+
         // 
         CustomJudge judge;
         bytes32 sub_task;
@@ -102,7 +104,7 @@ contract Interactive is IGameMaker, IDisputeResolutionLayer {
     }
 
     event StartChallenge(address p, address c, bytes32 s, bytes32 e, uint256 par, uint to, bytes32 gameID);
-    event Reported(bytes32 gameID, uint idx1, uint idx2, bytes32[] arr);
+    event Reported(bytes32 gameID, uint idx1, uint idx2, bytes32[] arr, bytes32 report_hash);
     event Queried(bytes32 gameID, uint idx1, uint idx2);
     event PostedPhases(bytes32 gameID, uint idx1, bytes32[13] arr);
     event SelectedPhase(bytes32 gameID, uint idx1, uint phase);
@@ -341,7 +343,8 @@ contract Interactive is IGameMaker, IDisputeResolutionLayer {
             g.proof[g.idx1+iter*(i+1)] = arr[i];
         }
         g.next = g.challenger;
-        emit Reported(gameID, i1, i2, arr);
+        g.report_hash = keccak256(abi.encodePacked(arr));
+        emit Reported(gameID, i1, i2, arr, g.report_hash);
         return true;
     }
     
@@ -350,9 +353,10 @@ contract Interactive is IGameMaker, IDisputeResolutionLayer {
     }
     
     // TODO: check the array here, too
-    function query(bytes32 gameID, uint i1, uint i2, uint num) public {
+    function query(bytes32 gameID, uint i1, uint i2, uint num, bytes32 report_hash) public {
         Game storage g = games[gameID];
         require(g.state == State.Running && num <= g.size && i1 == g.idx1 && i2 == g.idx2 && msg.sender == g.challenger && g.challenger == g.next);
+        require(g.report_hash == report_hash);
         g.clock = block.number;
         blocked[g.task_id] = g.clock + g.timeout;
         uint iter = (g.idx2-g.idx1)/(g.size+1);
