@@ -90,6 +90,21 @@ contract FileManager is FSUtils {
 		return createFileWithContents(name, nonce, formatData(arr), arr.length);
     }
 
+	function createParameters(uint nonce, uint8 stack, uint8 mem, uint8 globals, uint8 table, uint8 call, uint64 limit) public returns (bytes32) {
+		bytes memory arr = new bytes(32);
+		arr[0] = byte(stack);
+		arr[1] = byte(mem);
+		arr[2] = byte(table);
+		arr[3] = byte(globals);
+		arr[3] = byte(call);
+		uint64 acc = limit;
+		for (uint i = 0; i < 8; i++) {
+			arr[5+7-i] = byte(uint8(acc));
+			acc = acc/256;
+		}
+		return createFileFromBytes("config", nonce, arr);
+	}
+
     function addContractFile(string memory name, uint nonce, address _address, bytes32 root, uint size) public returns (bytes32) {
 	bytes32 id = keccak256(abi.encodePacked(msg.sender, nonce));
 	File storage f = files[id];

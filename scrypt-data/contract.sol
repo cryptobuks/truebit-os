@@ -21,8 +21,9 @@ interface Filesystem {
 }
 
 interface TrueBit {
-   function createTaskWithParams(bytes32 initTaskHash, uint8 codeType, bytes32 bundleID,  uint maxDifficulty,
+   function createTaskWithParams(bytes32 initTaskHash, uint8 codeType, bytes32 bundleID, uint maxDifficulty,
                                   uint8 stack, uint8 mem, uint8 globals, uint8 table, uint8 call, uint32 limit) external payable returns (bytes32);
+   function createParameters(uint nonce, uint8 stack, uint8 mem, uint8 globals, uint8 table, uint8 call, uint64 limit) external returns (bytes32);
    function requireFile(bytes32 id, bytes32 hash, /* Storage */ uint8 st) external returns (uint);
    function commitRequiredFiles(bytes32 id) external;
    function makeDeposit(uint _deposit) external payable returns (uint);
@@ -79,30 +80,9 @@ contract Scrypt {
       truebit.requireFile(task, filesystem.hashName("output.data"), 0);
       truebit.commitRequiredFiles(task);
 
-//      require(truebit.getUploadNames(task).length > 0);
-//      require(truebit.getUploadLength(task) > 0);
-
-//      truebit.checkUploadLength(task);
-
       task_to_string[task] = data;
       return filesystem.getInitHash(bundleID);
    }
-
-   function weird(bytes32 task) public returns (uint) {
-      // bytes32 task = truebit.createTaskWithParams.value(10)(0x0, 1, 0x0, 1, 20, 20, 8, 20, 10, 5000);
-      return truebit.requireFile(task, filesystem.hashName("output.data"), 0);
-      //uint l2 = truebit.requireFile(task, filesystem.hashName("output.data"), 0);
-      //uint l3 = truebit.requireFile(task, filesystem.hashName("output.data"), 0);
-      // truebit.checkUploadLength(task);
-      // return truebit.getUploadLength(task) + l1; // + l2 + l3;
-   }
-/*
-   function weird(bytes32 arg) public returns (uint) {
-      bytes32 task = truebit.createTaskWithParams.value(10)(0x0, 1, 0x0, 1, 20, 20, 8, 20, 10, 5000);
-      truebit.requireFile(task, filesystem.hashName("output.data"), 0);
-      // truebit.checkUploadLength(task);
-      return truebit.getUploadLength(task);
-   }*/
 
    function debug(bytes memory data) public returns (bytes32) {
       uint num = nonce;
