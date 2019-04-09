@@ -414,7 +414,7 @@ let setup_vm inst mdle func vs =
   let vm = Mrun.create_vm code in
   Mrun.setup_memory vm mdle inst;
   Mrun.setup_calltable vm mdle inst f_resolve (List.length vm_code);
-  if !Flags.config_from_file then List.iteri (add_input vm) !Flags.input_files else
+  if !Flags.config_from_file || not !Flags.run_wasm then List.iteri (add_input vm) !Flags.input_files else
   begin
     add_input_data vm 0 "config" (create_config ());
     List.iteri (fun i a -> add_input vm (i+1) a) !Flags.input_files;

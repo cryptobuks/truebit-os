@@ -2,7 +2,7 @@ const execFile = require('child_process').execFile
 const merkleRoot = require('../utils/merkleRoot').web3
 const fs = require('fs')
 
-const defaultWasmInterpreterPath = "./../../ocaml-offchain/interpreter/wasm"
+const defaultWasmInterpreterPath = "./ocaml-offchain/interpreter/wasm"
 
 const CodeType = {
     WAST: 0,
@@ -54,7 +54,7 @@ function buildArgs(args, config) {
         args.push("" + config.files[config.files.length - i - 1])
     }
     if (config.code_type == CodeType.WAST) ["-case", "0", config.code_file].forEach(a => args.push(a))
-    else["-wasm", config.code_file].forEach(a => args.push(a))
+    else["-config-from-file", "-wasm", config.code_file].forEach(a => args.push(a))
     //logger.info("Built args", {args:args})
     return args
 }

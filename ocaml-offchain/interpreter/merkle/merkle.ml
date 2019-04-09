@@ -392,23 +392,22 @@ let mem_init_size m =
     res := Int32.to_int min) (List.map (fun a -> a.it.mtype) m.memories);
   !res
 
-(*
-let vm_init m =
+let vm_init_simple m =
   [ PUSH (i (mem_init_size m)); GROW;
-    SETSTACK !Flags.stack_size;
-    SETMEMORY !Flags.memory_size;
-    SETCALLSTACK !Flags.call_size;
-    SETGLOBALS !Flags.globals_size;
-    SETTABLE !Flags.table_size ]
-*)
+    PUSH (i !Flags.stack_size); SETSTACK;
+    PUSH (i !Flags.memory_size); SETMEMORY;
+    PUSH (i !Flags.call_size); SETCALLSTACK;
+    PUSH (i !Flags.globals_size); SETGLOBALS;
+    PUSH (i !Flags.table_size); SETTABLE ]
 
 let vm_init m =
-  [ PUSH (i (mem_init_size m)); GROW;
-    PUSH (i 0); PUSH (i 0); INPUTDATA; SETSTACK;
+  if not !Flags.run_wasm then vm_init_simple m else
+  [ PUSH (i 0); PUSH (i 0); INPUTDATA; SETSTACK;
     PUSH (i 0); PUSH (i 1); INPUTDATA; SETMEMORY;
     PUSH (i 0); PUSH (i 2); INPUTDATA; SETTABLE;
     PUSH (i 0); PUSH (i 3); INPUTDATA; SETGLOBALS;
-    PUSH (i 0); PUSH (i 4); INPUTDATA; SETCALLSTACK ]
+    PUSH (i 0); PUSH (i 4); INPUTDATA; SETCALLSTACK;
+    PUSH (i 1); PUSH (i 0); PUSH (i 0); INPUTDATA; PUSH (i (-13)); BIN (I32 I32Op.Add); BIN (I32 I32Op.Shl); GROW]
 
 let flatten_tl lst =
   let rec do_flatten acc = function
@@ -523,15 +522,24 @@ let compile_test m func vs init inst =
      if mname = "env" && fname = "_cosf" then [STUB "cosf"; RETURN] else
      if mname = "env" && fname = "_sinf" then [STUB "sinf"; RETURN] else
      if mname = "env" && fname = "pushFrame" then
+         (*
          let stack_limit = Int32.of_int (Byteutil.pow2 !Flags.stack_size - Stacksize.check (elem m)) in
          let call_limit = Int32.of_int (Byteutil.pow2 !Flags.call_size - 1) in
+         *)
+         let stack_check = I32 (Int32.of_int (Stacksize.check (elem m))) in
          let num_globals = List.length (global_imports (elem m)) + List.length m.globals in
          let call_stack = num_globals + 2 in
          let frame_stack = num_globals + 3 in
          [LOADGLOBAL frame_stack; BIN (I32 I32Op.Add); STOREGLOBAL frame_stack;
           PUSH (I32 1l); LOADGLOBAL call_stack; BIN (I32 I32Op.Add); STOREGLOBAL call_stack;
-          LOADGLOBAL frame_stack; PUSH (I32 stack_limit); CMP (I32 I32Op.GtU); JUMPI (-11);
-          LOADGLOBAL call_stack; PUSH (I32 call_limit); CMP (I32 I32Op.GtU); JUMPI (-11);
+          LOADGLOBAL frame_stack;
+          (* check stack limit *)
+          (* PUSH (I32 stack_limit); *) PUSH (i 1); PUSH (i 0); PUSH (i 0); INPUTDATA; BIN (I32 I32Op.Shl); PUSH stack_check; BIN (I32 I32Op.Sub);
+          CMP (I32 I32Op.GtU); JUMPI (-11);
+          (* check call limit *)
+          LOADGLOBAL call_stack;
+          (* PUSH (I32 call_limit); *) PUSH (i 1); PUSH (i 0); PUSH (i 4); INPUTDATA; BIN (I32 I32Op.Shl); PUSH (i 1); BIN (I32 I32Op.Sub);
+          CMP (I32 I32Op.GtU); JUMPI (-11);
           RETURN; LABEL (-11); UNREACHABLE] else
      if mname = "env" && fname = "popFrame" then
          let num_globals = List.length (global_imports (elem m)) + List.length m.globals in

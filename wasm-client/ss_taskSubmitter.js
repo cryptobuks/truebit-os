@@ -25,7 +25,7 @@ const writeFile = (filepath, buf) => {
 module.exports = async (web3, logger, mcFileSystem) => {
 
 
-    const merkleComputer = require('./merkle-computer')(logger, './../wasm-client/ocaml-offchain/interpreter/wasm')
+    const merkleComputer = require('./merkle-computer')(logger, '../ocaml-offchain/interpreter/wasm')
 
     const typeTable = {
         "WAST": merkleComputer.CodeType.WAST,

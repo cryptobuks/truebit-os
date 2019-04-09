@@ -18,12 +18,12 @@ interface Filesystem {
    function addIPFSFile(string calldata name, uint size, string calldata hash, bytes32 root, uint nonce) external returns (bytes32);
    function hashName(string calldata name) external returns (bytes32);
    
+   function createParameters(uint nonce, uint8 stack, uint8 mem, uint8 globals, uint8 table, uint8 call, uint64 limit) external returns (bytes32);
 }
 
 interface TrueBit {
    function createTaskWithParams(bytes32 initTaskHash, uint8 codeType, bytes32 bundleID, uint maxDifficulty,
                                   uint8 stack, uint8 mem, uint8 globals, uint8 table, uint8 call, uint32 limit) external payable returns (bytes32);
-   function createParameters(uint nonce, uint8 stack, uint8 mem, uint8 globals, uint8 table, uint8 call, uint64 limit) external returns (bytes32);
    function requireFile(bytes32 id, bytes32 hash, /* Storage */ uint8 st) external returns (uint);
    function commitRequiredFiles(bytes32 id) external;
    function makeDeposit(uint _deposit) external payable returns (uint);
@@ -45,20 +45,21 @@ contract Scrypt {
    TrueBit truebit;
    Filesystem filesystem;
 
-   bytes32 bundleID;
    bytes32 codeFileID;
    bytes32 initHash;
+   bytes32 pfile;
 
    mapping (bytes => bytes32) string_to_file; 
    mapping (bytes32 => bytes) task_to_string;
    mapping (bytes => bytes32) result;
 
-   constructor(address tb, address fs, bytes32 _bundleID, bytes32 _codeFileID, bytes32 _initHash) public {
+   constructor(address tb, address fs, bytes32 _codeFileID, bytes32 _initHash) public {
        truebit = TrueBit(tb);
        filesystem = Filesystem(fs);
-       bundleID = _bundleID;
        codeFileID = _codeFileID;
        initHash = _initHash;
+       pfile = filesystem.createParameters(0, 20, 20, 8, 20, 10, 5000);
+       nonce = 1;
    }
 
    function () external payable {}
@@ -67,13 +68,17 @@ contract Scrypt {
       uint num = nonce;
       nonce++;
 
+      bytes32 bundleID = filesystem.makeBundle(nonce);
+
+      filesystem.addToBundle(bundleID, pfile);
+
       bytes32 inputFileID = filesystem.createFileFromBytes("input.data", num, data);
       string_to_file[data] = inputFileID;
       filesystem.addToBundle(bundleID, inputFileID);
       
       bytes32[] memory empty = new bytes32[](0);
       filesystem.addToBundle(bundleID, filesystem.createFileWithContents("output.data", num+1000000000, empty, 0));
-      
+
       filesystem.finalizeBundle(bundleID, codeFileID);
       
       bytes32 task = truebit.createTaskWithParams.value(10)(filesystem.getInitHash(bundleID), 1, bundleID, 1, 20, 20, 8, 20, 10, 5000);
@@ -88,6 +93,8 @@ contract Scrypt {
       uint num = nonce;
       nonce++;
 
+      bytes32 bundleID = filesystem.makeBundle(nonce);
+      
       bytes32 inputFileID = filesystem.createFileFromBytes("input.data", num, data);
       string_to_file[data] = inputFileID;
       filesystem.addToBundle(bundleID, inputFileID);

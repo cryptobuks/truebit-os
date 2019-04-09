@@ -96,7 +96,7 @@ contract FileManager is FSUtils {
 		arr[1] = byte(mem);
 		arr[2] = byte(table);
 		arr[3] = byte(globals);
-		arr[3] = byte(call);
+		arr[4] = byte(call);
 		uint64 acc = limit;
 		for (uint i = 0; i < 8; i++) {
 			arr[5+7-i] = byte(uint8(acc));

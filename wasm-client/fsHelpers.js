@@ -44,7 +44,7 @@ function arrange(arr) {
 
 exports.init = function (fileSystem, web3, mcFileSystem, logger, incentiveLayer, account, config) {
 
-    const merkleComputer = require("./merkle-computer")(logger, './../wasm-client/ocaml-offchain/interpreter/wasm', config.jit_path)
+    const merkleComputer = require("./merkle-computer")(logger, '../ocaml-offchain/interpreter/wasm', config.jit_path)
 
     async function createFile(fname, buf) {
         var nonce = await web3.eth.getTransactionCount(account)

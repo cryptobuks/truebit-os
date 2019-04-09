@@ -83,13 +83,13 @@ describe('Truebit OS WASM Scrypt test', async function () {
 			os.web3.currentProvider.disconnect()
 
 		})
-
+/*
 		it("should create a bundle", async () => {
 			let nonce = Math.floor(Math.random() * Math.pow(2, 60)).toString()
 			bundleID = await tbFilesystem.methods.calcId(nonce).call({from:account})
 			await tbFilesystem.methods.makeBundle(nonce).send({ from: account, gas: 300000 })
 		})
-
+*/
 		it('should upload task code', async () => {
 			let codeBuf = fs.readFileSync("./scrypt-data/task.wasm")
 			let ipfsFile = (await fileSystem.upload(codeBuf, "task.wasm"))[0]
@@ -125,8 +125,8 @@ describe('Truebit OS WASM Scrypt test', async function () {
 			scrypt_contract = await deployContract(
 				abi,
 				fs.readFileSync("./scrypt-data/compiled/Scrypt.bin"),
-				[cConfig.ss_incentiveLayer.address, cConfig.fileSystem.address, bundleID, codeFileID, info.codehash],
-				{ from: account, gas: 2000000 })
+				[cConfig.ss_incentiveLayer.address, cConfig.fileSystem.address, codeFileID, info.codehash],
+				{ from: account, gas: 3000000 })
 			
 				await web3.eth.sendTransaction({to:scrypt_contract.options.address, value:"1000000000000000000", from: os.accounts[0], gas: 200000 })
 				/*

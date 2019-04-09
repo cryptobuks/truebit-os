@@ -25,7 +25,7 @@ module.exports = {
 
         solvers.push(p.ps)
 
-        const merkleComputer = require("./merkle-computer")(logger, './../wasm-client/ocaml-offchain/interpreter/wasm')
+        const merkleComputer = require("./merkle-computer")(logger, '../ocaml-offchain/interpreter/wasm')
 
         let [incentiveLayer, fileSystem, disputeResolutionLayer] = await ps.setup(web3)
 
@@ -73,7 +73,7 @@ module.exports = {
         })
 
         p.addEvent("SolutionsCommitted", incentiveLayer.events.SolutionsCommitted, async result => {
-            logger.info("SOLVER: Committed a solution pair")
+            logger.info("SOLVER: Committed a solution hash")
         })
 
         p.addEvent("SolutionRevealed", incentiveLayer.events.SolutionRevealed, async result => {
