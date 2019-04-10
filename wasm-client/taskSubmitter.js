@@ -57,7 +57,7 @@ const writeFile = (filepath, buf) => {
 module.exports = async (web3, logger, mcFileSystem) => {
 
     let contracts = await setup(web3)
-    const merkleComputer = require('./merkle-computer')(logger, './../wasm-client/ocaml-offchain/interpreter/wasm')
+    const merkleComputer = require('./merkle-computer')(logger, '../../ocaml-offchain/interpreter/wasm')
 
     const typeTable = {
         "WAST": merkleComputer.CodeType.WAST,
@@ -214,7 +214,7 @@ module.exports = async (web3, logger, mcFileSystem) => {
 
         let codeBuf = fs.readFileSync(process.cwd() + task.codeFile)
 
-        let randomPath = process.cwd() + "/tmp.giver_" + Math.floor(Math.random() * Math.pow(2, 60)).toString(32)
+        let randomPath = process.cwd() + "/tmp/giver_" + Math.floor(Math.random() * Math.pow(2, 60)).toString(32)
 
         if (!fs.existsSync(randomPath)) fs.mkdirSync(randomPath)
         fs.writeFileSync(randomPath + "/" + path.basename(task.codeFile), codeBuf)

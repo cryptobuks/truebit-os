@@ -263,7 +263,12 @@ function flushFiles() {
 }
 
 function makeMemory() {
-    let sz = argv["memory-size"] || 128
+    let sz = /* argv["memory-size"] || */ 128
+    if (input[0] && input[0].data[0]) {
+        let config_mem = input[0].data[0].charCodeAt(0)
+        sz = Math.pow(2, config_mem - 13)
+        console.log("reading memory info from config file", config_mem, sz)
+    }
     // var sz = TOTAL_MEMORY / WASM_PAGE_SIZE
     let memory = new WebAssembly.Memory({ 'initial': sz, 'maximum': sz })
     HEAP32 = new Uint32Array(memory.buffer)

@@ -13,7 +13,7 @@ module.exports = async (incentiveLayer, merkleComputer, taskID, wasmCodeBuffer, 
     let agentName = "solver"
     if (verifier) agentName = "verifier"
 
-    let randomPath = process.cwd() + "/tmp." + agentName + "_" + Math.floor(Math.random() * Math.pow(2, 60)).toString(32)
+    let randomPath = process.cwd() + "/tmp/" + agentName + "_" + Math.floor(Math.random() * Math.pow(2, 60)).toString(32)
 
     if (!fs.existsSync(randomPath)) fs.mkdirSync(randomPath)
 

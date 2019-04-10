@@ -51,14 +51,14 @@ async function deploy() {
 
     let networkName = await getNetwork(web3)
 
-    let artifacts = JSON.parse(fs.readFileSync('../../truebit-os/wasm-client/' + networkName + '.json'))
+    let artifacts = JSON.parse(fs.readFileSync('../../../wasm-client/' + networkName + '.json'))
 
     let accounts = await web3.eth.getAccounts()
     let account = accounts[0]
 
     let options = { from: accounts[0].toLowerCase(), gas: 4000000 }
 
-    let bundleID, codeFileID
+    let codeFileID
     let initHash = info.codehash
 
     let tbFileSystem = new web3.eth.Contract(artifacts.fileSystem.abi, artifacts.fileSystem.address)
@@ -88,8 +88,7 @@ async function deploy() {
     console.log("Registered IPFS file with Truebit filesystem")
 
     let args = [
-        artifacts.incentiveLayer.address,
-        artifacts.tru.address,
+        artifacts.ss_incentiveLayer.address,
         artifacts.fileSystem.address,
         codeFileID,
         info.memsize,
@@ -102,15 +101,17 @@ async function deploy() {
 
     let c = await contract.deploy({ data: "0x" + bin, arguments: args }).send(options)
 
-    let tru = new web3.eth.Contract(artifacts.tru.abi, artifacts.tru.address)
+    console.log("Contract has been deployed", c.options.address)
 
+    let tru = new web3.eth.Contract(artifacts.tru.abi, artifacts.tru.address)
     tru.methods.transfer(c.options.address, "100000000000000000000").send({ from: accounts[0], gas: 200000 })
+
+    await web3.eth.sendTransaction({ from: accounts[0].toLowerCase(), to: c.options.address, value: web3.utils.toWei("2000", "ether") })
 
     artifacts["sample"] = { address: c.options.address, abi: abi }
 
     fs.writeFileSync("public/" + networkName + ".json", JSON.stringify(artifacts))
 
-    console.log("Contract has been deployed")
 }
 
 deploy()

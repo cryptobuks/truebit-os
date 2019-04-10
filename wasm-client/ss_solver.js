@@ -25,7 +25,7 @@ module.exports = {
 
         solvers.push(p.ps)
 
-        const merkleComputer = require("./merkle-computer")(logger, '../ocaml-offchain/interpreter/wasm')
+        const merkleComputer = require("./merkle-computer")(logger, '../../ocaml-offchain/interpreter/wasm')
 
         let [incentiveLayer, fileSystem, disputeResolutionLayer] = await ps.setup(web3)
 
