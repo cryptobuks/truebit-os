@@ -6,27 +6,28 @@ contract BundleManager is FileManager {
 
     // Methods to build IO blocks    
     struct Bundle {
-	bytes32 name_file;
-	bytes32 data_file;
-	bytes32 size_file;
-	uint pointer;
-	bytes32 codeFileId;
-	bytes32 init;
-	bytes32[] files;
+        bytes32 name_file;
+        bytes32 data_file;
+        bytes32 size_file;
+        uint pointer;
+        bytes32 codeFileId;
+        bytes32 init;
+        bytes32[] files;
     }
 
     mapping (bytes32 => Bundle) bundles;
+	mapping (address => mapping (bytes32 => bytes32)) bundle_id;
 
 	constructor() public FileManager() {}
 
     function makeBundle(uint num) public view returns (bytes32) {
-	bytes32 id = keccak256(abi.encodePacked(msg.sender, num));
-	return id;
+        bytes32 id = keccak256(abi.encodePacked(msg.sender, num));
+        return id;
     }
 
     function addToBundle(bytes32 id, bytes32 file_id) public returns (bytes32) {
-	Bundle storage b = bundles[id];
-	b.files.push(file_id);
+        Bundle storage b = bundles[id];
+        b.files.push(file_id);
     }
 
     function finalizeBundle(bytes32 bundleID, bytes32 codeFileID) public returns (bytes32) {
@@ -46,6 +47,8 @@ contract BundleManager is FileManager {
 	}
        
 	b.init = keccak256(abi.encodePacked(f.codeRoot, calcMerkle(res1, 0, 10), calcMerkle(res2, 0, 10), calcMerkleFiles(res3, 0, 10)));
+
+	bundle_id[msg.sender][b.init] = bundleID;
 
 	return b.init;
 
@@ -74,18 +77,28 @@ contract BundleManager is FileManager {
     }
        
     function getInitHash(bytes32 bid) public view returns (bytes32) {
-	Bundle storage b = bundles[bid];
-	return b.init;
+	    Bundle storage b = bundles[bid];
+	    return b.init;
     }
 
     function getCodeFileID(bytes32 bundleID) public view returns (bytes32) {
-	Bundle storage b = bundles[bundleID];
-	return b.codeFileId;
+	    Bundle storage b = bundles[bundleID];
+	    return b.codeFileId;
     }
       
     function getFiles(bytes32 bid) public view returns (bytes32[] memory) {
-	Bundle storage b = bundles[bid];
-	return b.files;
+	    Bundle storage b = bundles[bid];
+	    return b.files;
     }
-    
+
+	function getFilesByInit(address addr, bytes32 init) public view returns (bytes32[] memory) {
+	    Bundle storage b = bundles[bundle_id[addr][init]];
+	    return b.files;
+	}
+
+	function getCodeFileByInit(address addr, bytes32 init) public view returns (bytes32) {
+	    Bundle storage b = bundles[bundle_id[addr][init]];
+	    return b.codeFileId;
+	}
+
 }

@@ -105,7 +105,8 @@ describe('Truebit OS WASM Scrypt test', async function () {
 
 			codeFileID = await tbFilesystem.methods.calcId(nonce).call({from:account})
 
-			await tbFilesystem.methods.addIPFSCodeFile(name, size, ipfsHash, merkleRoot, info.codehash, nonce).send({ from: account, gas: 300000 })
+			await tbFilesystem.methods.addIPFSFile(name, size, ipfsHash, merkleRoot, nonce).send({ from: account, gas: 300000 })
+			await tbFilesystem.methods.setCodeRoot(codeFileID, info.codehash, 2).send({ from: account, gas: 300000 })
 		})
 
 		let scrypt_contract
@@ -125,17 +126,10 @@ describe('Truebit OS WASM Scrypt test', async function () {
 			scrypt_contract = await deployContract(
 				abi,
 				fs.readFileSync("./scrypt-data/compiled/Scrypt.bin"),
-				[cConfig.ss_incentiveLayer.address, cConfig.fileSystem.address, codeFileID, info.codehash],
+				[cConfig.ss_incentiveLayer.address, cConfig.fileSystem.address, codeFileID],
 				{ from: account, gas: 3000000 })
 			
 				await web3.eth.sendTransaction({to:scrypt_contract.options.address, value:"1000000000000000000", from: os.accounts[0], gas: 200000 })
-				/*
-				await scrypt_contract.methods.weird("0x00").send({ from: account, gas: 2000000 })
-				await scrypt_contract.methods.weird("0x00").send({ from: account, gas: 2000000 })
-				await scrypt_contract.methods.weird("0x00").send({ from: account, gas: 2000000 })
-				await scrypt_contract.methods.weird("0x00").send({ from: account, gas: 2000000 })
-			console.log(await scrypt_contract.methods.weird("0x00").call({ from: account, gas: 2000000 }))
-*/
 
 			//	scrypt_contract.once("GotFiles", async ev => {
 			scrypt_contract.events.GotFiles(async (err,ev) => {

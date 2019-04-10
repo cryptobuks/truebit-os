@@ -12,7 +12,7 @@ interface Filesystem {
    
    function makeBundle(uint num) external view returns (bytes32);
    function addToBundle(bytes32 id, bytes32 file_id) external returns (bytes32);
-   function finalizeBundle(bytes32 bundleID, bytes32 codeFileID) external;
+   function finalizeBundle(bytes32 bundleID, bytes32 codeFileID) external returns (bytes32);
    function getInitHash(bytes32 bid) external view returns (bytes32);   
    function addIPFSFile(string calldata name, uint size, string calldata hash, bytes32 root, uint nonce) external returns (bytes32);
    function hashName(string calldata name) external returns (bytes32);
@@ -21,8 +21,7 @@ interface Filesystem {
 }
 
 interface TrueBit {
-   function createTaskWithParams(bytes32 initTaskHash, uint8 codeType, bytes32 bundleID, uint maxDifficulty,
-                                  uint8 stack, uint8 mem, uint8 globals, uint8 table, uint8 call, uint32 limit) external payable returns (bytes32);
+   function createTask(bytes32 initTaskHash, uint difficulty) external payable returns (bytes32);
    function requireFile(bytes32 id, bytes32 hash, /* Storage */ uint8 st) external returns (uint);
    function commitRequiredFiles(bytes32 id) external;
    function makeDeposit(uint _deposit) external payable returns (uint);
@@ -45,18 +44,16 @@ contract Scrypt {
    Filesystem filesystem;
 
    bytes32 codeFileID;
-   bytes32 initHash;
    bytes32 pfile;
 
    mapping (bytes => bytes32) string_to_file; 
    mapping (bytes32 => bytes) task_to_string;
    mapping (bytes => bytes32) result;
 
-   constructor(address tb, address fs, bytes32 _codeFileID, bytes32 _initHash) public {
+   constructor(address tb, address fs, bytes32 _codeFileID) public {
        truebit = TrueBit(tb);
        filesystem = Filesystem(fs);
        codeFileID = _codeFileID;
-       initHash = _initHash;
        pfile = filesystem.createParameters(0, 20, 20, 8, 20, 10, 5000);
        nonce = 1;
    }
@@ -78,14 +75,14 @@ contract Scrypt {
       bytes32[] memory empty = new bytes32[](0);
       filesystem.addToBundle(bundleID, filesystem.createFileWithContents("output.data", num+1000000000, empty, 0));
 
-      filesystem.finalizeBundle(bundleID, codeFileID);
-      
-      bytes32 task = truebit.createTaskWithParams.value(10)(filesystem.getInitHash(bundleID), 1, bundleID, 1, 20, 20, 8, 20, 10, 5000);
+      bytes32 initHash = filesystem.finalizeBundle(bundleID, codeFileID);
+
+      bytes32 task = truebit.createTask.value(10)(initHash, 1);
       truebit.requireFile(task, filesystem.hashName("output.data"), 0);
       truebit.commitRequiredFiles(task);
 
       task_to_string[task] = data;
-      return filesystem.getInitHash(bundleID);
+      return initHash;
    }
 
    function debug(bytes memory data) public returns (bytes32) {

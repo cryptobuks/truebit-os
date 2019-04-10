@@ -96,7 +96,7 @@ module.exports = async (web3, logger, mcFileSystem) => {
 
         await tbFileSystem.methods.addIPFSFile(name, size, ipfsHash, fileRoot, randomNum).send({ from: from, gas: 300000 })
 
-        await tbFileSystem.methods.setCodeRoot(codeFileID, codeRoot).send({ from: from, gas: 100000 })
+        await tbFileSystem.methods.setCodeRoot(codeFileID, codeRoot, 0).send({ from: from, gas: 100000 })
 
         await tbFileSystem.methods.finalizeBundle(bundleID, codeFileID).send({ from: from, gas: 1000000 })
 
@@ -234,7 +234,7 @@ module.exports = async (web3, logger, mcFileSystem) => {
             let size = Buffer.byteLength(codeBuf, 'utf8');
 
             await tbFileSystem.methods.addContractFile("task.wasm", codeFileNonce, contractAddress, fileRoot, size).send({ from: task.from, gas: 300000 })
-            await tbFileSystem.methods.setCodeRoot(codeFileId, codeRoot).send({ from: task.from, gas: 100000 })
+            await tbFileSystem.methods.setCodeRoot(codeFileId, codeRoot, 0).send({ from: task.from, gas: 100000 })
 
             let bundleID = await makeBundle(task.from)
 
@@ -253,11 +253,7 @@ module.exports = async (web3, logger, mcFileSystem) => {
 
         console.log(task.initHash,task.codeType,task.bundleID,1)
 
-        var id = await incentiveLayer.methods.createTask(
-            task.initHash,
-            task.codeType,
-            task.bundleID,
-            1).send({ gas: 1000000, from: task.from, value: task.reward })
+        var id = await incentiveLayer.methods.createSimpleTask(task.initHash).send({ gas: 1000000, from: task.from, value: task.reward })
 
         logger.info('Task was created')
 

@@ -2,12 +2,15 @@ pragma solidity ^0.5.0;
 
 import "./FSUtils.sol";
 
-interface Consumer {
-   function consume(bytes32 id, bytes32[] calldata dta) external;
-}
-
 contract FileManager is FSUtils {
 
+	enum CodeType {
+        WAST,
+        WASM,
+        WASM_METERED,
+        INTERNAL
+    }
+   
     bytes32[] zero;
     bytes32[] zero_files;
 
@@ -24,6 +27,7 @@ contract FileManager is FSUtils {
 	bytes32 codeRoot;
 	bool codeRootSet;
 	uint fileType;// 0: eth_bytes, 1: contract, 2: ipfs
+	CodeType codeType;
     }
     
     mapping (bytes32 => File) files;
@@ -147,6 +151,7 @@ contract FileManager is FSUtils {
 	f.codeRoot = codeRoot;
 	f.codeRootSet = true;
 	f.fileType = 2;
+	f.codeType = CodeType.WASM;
 	emit CreatedFile(id, f.root);
 	return id;
     }
@@ -191,11 +196,16 @@ contract FileManager is FSUtils {
 	files[id].bytesize = sz;
     }
 
-    function setCodeRoot(bytes32 id, bytes32 codeRoot) public returns (uint) {
+    function setCodeRoot(bytes32 id, bytes32 codeRoot, CodeType codetype) public returns (uint) {
 	require(!files[id].codeRootSet);
 	files[id].codeRoot = codeRoot;
+	files[id].codeType = codetype;
 	files[id].codeRootSet = true;
-    }    
+    }
+
+	function getCodeType(bytes32 id) public view returns (CodeType) {
+		return files[id].codeType;
+	}
 
     function getData(bytes32 id) public view returns (bytes32[] memory) {
 	File storage f = files[id];
@@ -215,11 +225,6 @@ contract FileManager is FSUtils {
 	return res;
     }
 
-    function forwardData(bytes32 id, address a) public {
-	File storage f = files[id];
-	Consumer(a).consume(id, f.data);
-    }
-   
     function getRoot(bytes32 id) public view returns (bytes32) {
 	File storage f = files[id];
 	return f.root;

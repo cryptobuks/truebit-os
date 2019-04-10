@@ -173,12 +173,15 @@ exports.init = function (fileSystem, web3, mcFileSystem, logger, incentiveLayer,
 
     async function setupVMWithFS_aux(taskInfo) {
         let taskID = taskInfo.taskID
-        let bundleID = taskInfo.bundleId
+        let giver = taskInfo.giver
+        let hash = taskInfo.initHash
 
-        let codeFileID = await fileSystem.methods.getCodeFileID(bundleID).call()
-        let fileIDs = await fileSystem.methods.getFiles(bundleID).call()
+        let codeFileID = await fileSystem.methods.getCodeFileByInit(giver, hash).call()
+        let fileIDs = await fileSystem.methods.getFilesByInit(giver, hash).call()
 
         let [codeName, codeBuf] = await getFile(codeFileID)
+
+        let codeType = await fileSystem.methods.getCodeType(codeFileID).call()
 
         let files = []
 
@@ -198,7 +201,7 @@ exports.init = function (fileSystem, web3, mcFileSystem, logger, incentiveLayer,
             merkleComputer,
             taskID,
             codeBuf,
-            taskInfo.codeType,
+            codeType,
             false,
             files
         )
@@ -208,8 +211,8 @@ exports.init = function (fileSystem, web3, mcFileSystem, logger, incentiveLayer,
     async function setupVMWithFS(taskInfo) {
         let vm = await setupVMWithFS_aux(taskInfo)
         let init = await vm.initializeWasmTask()
-        if (init.hash != taskInfo.initStateHash) {
-            logger.error(`Task was ill-formed: got initial state ${init.hash}, but ${taskInfo.initStateHash} was given by the task giver`)
+        if (init.hash != taskInfo.initHash) {
+            logger.error(`Task was ill-formed: got initial state ${init.hash}, but ${taskInfo.initHash} was given by the task giver`)
             throw new Error("Ill formed task")
         }
         return vm

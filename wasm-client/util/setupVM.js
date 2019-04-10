@@ -21,12 +21,13 @@ module.exports = async (incentiveLayer, merkleComputer, taskID, wasmCodeBuffer, 
 
     if (codeType == '0') {
         filePath = randomPath + "/task.wast"
-    } else if (codeType == '1') {
+    } else if (codeType == '1' || codeType == '2') {
         filePath = randomPath + "/task.wasm"
     } else {
         throw "code type not recognized"
     }
 
+    /*
     let data = await incentiveLayer.methods.getVMParameters(taskID).call()
 
     let vmParameters = {
@@ -36,9 +37,10 @@ module.exports = async (incentiveLayer, merkleComputer, taskID, wasmCodeBuffer, 
         table: parseInt(data[3]),
         call: parseInt(data[4]),
         gasLimit: parseInt(data[5]),
-    }
+    }*/
+
     // add metering
-    if (vmParameters.gasLimit > 0) {
+    if (codeType == '2') {
         const metering = require('wasm-metering-tb')
         const meteredWasm = metering.meterWASM(wasmCodeBuffer, {
             moduleStr: 'env',
@@ -67,7 +69,7 @@ module.exports = async (incentiveLayer, merkleComputer, taskID, wasmCodeBuffer, 
         code_file: filePath,
         actor: solverConf,
         files: fileNames,
-        vm_parameters: vmParameters,
+        // vm_parameters: vmParameters,
         code_type: codeType
     }
 
