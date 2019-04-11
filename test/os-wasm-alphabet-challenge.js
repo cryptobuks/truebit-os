@@ -79,7 +79,7 @@ describe('Truebit OS WASM Alphabet Challenge', async function() {
 		"inputFile": "/data/alphabet.txt",
 		"reward": "1",
 		"maxDifficulty": "1",
-		"files": ["/data/alphabet.txt", "/data/reverse_alphabet.txt"]
+		"files": ["/data/config", "/data/alphabet.txt", "/data/reverse_alphabet.txt"]
 	    }
 
 	    //simulate cli by adding from account and translate reward

@@ -96,7 +96,7 @@ module.exports = async (web3, logger, mcFileSystem) => {
 
         await tbFileSystem.methods.addIPFSFile(name, size, ipfsHash, fileRoot, randomNum).send({ from: from, gas: 300000 })
 
-        await tbFileSystem.methods.setCodeRoot(codeFileID, codeRoot, 0).send({ from: from, gas: 100000 })
+        await tbFileSystem.methods.setCodeRoot(codeFileID, codeRoot, config.code_type).send({ from: from, gas: 100000 })
 
         await tbFileSystem.methods.finalizeBundle(bundleID, codeFileID).send({ from: from, gas: 1000000 })
 
@@ -155,7 +155,8 @@ module.exports = async (web3, logger, mcFileSystem) => {
         let codeRoot = await getCodeRoot(config, dirPath)
         let fileRoot = merkleComputer.merkleRoot(web3, codeBuf)
 
-        await tbFileSystem.methods.addIPFSCodeFile(codeName, codeSize, ipfsHash, fileRoot, codeRoot, randomNum).send({ from: from, gas: 300000 })
+        await tbFileSystem.methods.addIPFSFile(codeName, codeSize, ipfsHash, fileRoot, randomNum).send({ from: from, gas: 300000 })
+        await tbFileSystem.methods.setCodeRoot(codeFileId, codeRoot, config.code_type).send({ from: from, gas: 300000 })
 
         await tbFileSystem.methods.finalizeBundle(bundleID, codeFileId).send({ from: from, gas: 1500000 })
 
@@ -251,7 +252,7 @@ module.exports = async (web3, logger, mcFileSystem) => {
 
         logger.info(`Submitting task`)
 
-        console.log(task.initHash,task.codeType,task.bundleID,1)
+        // console.log(task.initHash,task.codeType,task.bundleID,1)
 
         var id = await incentiveLayer.methods.createSimpleTask(task.initHash).send({ gas: 1000000, from: task.from, value: task.reward })
 

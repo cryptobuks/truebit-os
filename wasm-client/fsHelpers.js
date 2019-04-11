@@ -148,7 +148,7 @@ exports.init = function (fileSystem, web3, mcFileSystem, logger, incentiveLayer,
         let fileData
 
         let size = await fileSystem.methods.getByteSize(fileID).call()
-        console.log("Getting file", fileName, "Type:", fileType, "Size:", size)
+        logger.info(`Getting file ${fileName} Type: ${fileType} Size: ${size}`)
 
         if (fileType == 0) {
             // Retrieve from bytes
