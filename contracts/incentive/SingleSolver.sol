@@ -52,17 +52,6 @@ contract SingleSolverIncentiveLayer is Ownable, ITruebit {
         BLOCKCHAIN
     }
 
-/*
-    struct VMParameters {
-        uint8 stackSize;
-        uint8 memorySize;
-        uint8 callSize;
-        uint8 globalsSize;
-        uint8 tableSize;
-        uint32 gasLimit;
-    }
-*/
-
     mapping (address => uint) deposits;
 
     function makeDeposit() public payable {
@@ -102,29 +91,20 @@ contract SingleSolverIncentiveLayer is Ownable, ITruebit {
         bytes32 nameHash;
         StorageType fileStorage;
         bytes32 fileId;
+        uint maxSize;
     }
     
     struct Task {
         address payable owner;
         address giver;
-        // address selectedSolver;
-        // uint minDeposit;
         uint reward;
-        // uint tax;
         bytes32 initTaskHash;
         State state;
-        // bytes32 blockhash;
-        uint finalityCode; // 0 => not finalized, 1 => finalized, 2 => forced error occurred
-        uint difficulty;
-        // uint jackpotID;
-        // uint cost;
-        // CodeType codeType;
-        // bytes32 bundleId;
+        uint difficulty; // how many blocks the computation can take
 
         bool requiredCommitted;
         RequiredFile[] uploads;
         
-        // uint lastBlock; // Used to check timeout
         uint timeoutBlock;
         uint challengeTimeout;
         uint initBlock;
@@ -231,10 +211,10 @@ contract SingleSolverIncentiveLayer is Ownable, ITruebit {
         return id;
     }
 
-    function requireFile(bytes32 id, bytes32 hash, StorageType st) public returns (uint) {
+    function requireFile(bytes32 id, bytes32 hash, StorageType st, uint maxSize) public returns (uint) {
         Task storage t = tasks[id];
         require (!t.requiredCommitted && msg.sender == t.giver);
-        t.uploads.push(RequiredFile(hash, st, 0));
+        t.uploads.push(RequiredFile(hash, st, 0, maxSize));
         // require(t.uploads.length > 0);
         return t.uploads.length;
     }
@@ -251,15 +231,17 @@ contract SingleSolverIncentiveLayer is Ownable, ITruebit {
         return lst.length;
     }
 
-    function checkUploadLength(bytes32 id) public view {
-        RequiredFile[] storage lst = tasks[id].uploads;
-        require(lst.length > 0, "Urgh");
-    }
-
     function getUploadNames(bytes32 id) public view returns (bytes32[] memory) {
         RequiredFile[] storage lst = tasks[id].uploads;
         bytes32[] memory arr = new bytes32[](lst.length);
         for (uint i = 0; i < arr.length; i++) arr[i] = lst[i].nameHash;
+        return arr;
+    }
+
+    function getUploadSizes(bytes32 id) public view returns (uint[] memory) {
+        RequiredFile[] storage lst = tasks[id].uploads;
+        uint[] memory arr = new uint[](lst.length);
+        for (uint i = 0; i < arr.length; i++) arr[i] = lst[i].maxSize;
         return arr;
     }
 
@@ -308,7 +290,6 @@ contract SingleSolverIncentiveLayer is Ownable, ITruebit {
         (ok, res) = t.giver.call(abi.encodeWithSignature("cancel(bytes32)", taskID));
     }
 
-    // Change this to pull?
     function slashOwner(bytes32 taskID, address recp) internal {
         Solution storage s = solutions[taskID];
         for (uint i = 0; i < s.allChallengers.length; i++) {
@@ -454,10 +435,21 @@ contract SingleSolverIncentiveLayer is Ownable, ITruebit {
         solutions[taskID].currentGame = gameID;
     }
     
-    function uploadFile(bytes32 id, uint num, bytes32 file_id, bytes32[] memory name_proof, bytes32[] memory data_proof, uint file_num) public returns (bool) {
+    function uploadFile(bytes32 id, uint num, bytes32 file_id,
+                        bytes32[] memory name_proof, bytes32[] memory data_proof, bytes32[] memory size_proof, uint file_num) public returns (bool) {
         Task storage t = tasks[id];
         Solution storage s = solutions[id];
         RequiredFile storage file = t.uploads[num];
+
+        require(getRoot(size_proof, file_num) == s.sizeHash);
+        uint size = uint(getLeaf(size_proof, file_num));
+
+        if (size > file.maxSize) {
+            file.fileId = bytes32(uint(1));
+            return true;
+        }
+
+        require(size == fs.getByteSize(file_id));
         require(checkProof(fs.getRoot(file_id), s.dataHash, data_proof, file_num));
         require(checkProof(fs.getNameHash(file_id), s.nameHash, name_proof, file_num));
         
@@ -501,7 +493,6 @@ contract SingleSolverIncentiveLayer is Ownable, ITruebit {
         }
 
         t.state = State.TaskFinalized;
-        t.finalityCode = 1; // Task has been completed
 
         payReward(taskID);
         bool ok;
@@ -548,10 +539,6 @@ contract SingleSolverIncentiveLayer is Ownable, ITruebit {
         }
         
         return true;
-    }
-
-    function getTaskFinality(bytes32 taskID) public view returns (uint) {
-        return tasks[taskID].finalityCode;
     }
 
     function getTaskInfo(bytes32 taskID) public view returns (address, bytes32, bytes32) {

@@ -115,14 +115,14 @@ exports.init = function (fileSystem, web3, mcFileSystem, logger, incentiveLayer,
     async function uploadOutputs(taskID, vm) {
         let lst = await incentiveLayer.methods.getUploadNames(taskID).call()
         let types = await incentiveLayer.methods.getUploadTypes(taskID).call()
-        console.log("Uploading", { names: lst, types: types }, taskID)
+        // console.log("Uploading", { names: lst, types: types }, taskID)
         if (lst.length == 0) return
         let proofs = await vm.fileProofs() // common.exec(config, ["-m", "-input-proofs", "-input2"])
         // var proofs = JSON.parse(proofs)
         // console.log("Uploading", {names:lst, types:types, proofs: proofs})
         for (let i = 0; i < lst.length; i++) {
             // find proof with correct hash
-            console.log("Findind upload proof", { hash: lst[i], kind: types[i] })
+            logger.info(`Findind upload proof hash: ${lst[i]} kind: ${types[i]}`)
             let hash = lst[i]
             let proof = proofs.find(el => getLeaf(el.name, el.loc) == hash)
 
@@ -137,7 +137,7 @@ exports.init = function (fileSystem, web3, mcFileSystem, logger, incentiveLayer,
 
             let fileID = await uploadFile(fname, buf, parseInt(types[i]))
 
-            await incentiveLayer.methods.uploadFile(taskID, i, fileID, proof.name, proof.data, proof.loc).send( { from: account, gas: 1000000 })
+            await incentiveLayer.methods.uploadFile(taskID, i, fileID, proof.name, proof.data, proof.size, proof.loc).send( { from: account, gas: 1000000 })
         }
     }
 

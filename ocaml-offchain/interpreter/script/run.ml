@@ -448,7 +448,8 @@ let handle_exit vm selected =
     | None -> () );
   if selected && !Flags.output_all_file_proofs then begin
        let lst = Mproof.find_files vm in
-       let print_file (p1, p2, idx, fname) = Printf.sprintf "{\"data\": %s, \"name\": %s, \"loc\": %i, \"file\": \"%s\"}\n" (Mproof.list_to_string p1) (Mproof.list_to_string p2) idx fname in
+       let print_file (p1, p2, p3, idx, fname) = Printf.sprintf "{\"data\": %s, \"name\": %s, \"size\": %s, \"loc\": %i, \"file\": \"%s\"}\n"
+           (Mproof.list_to_string p1) (Mproof.list_to_string p2) (Mproof.list_to_string p3) idx fname in
        Printf.printf "[%s]\n" (String.concat ", " (List.map print_file lst))
   end;
   if selected && !Flags.final_stack then Printf.printf "{\"end_stack\": %s, \"steps\": %i}\n" (Mproof.list_to_string (List.map Byteutil.get_value (take_array 10 vm.stack))) vm.step;
@@ -475,7 +476,9 @@ let run_test_aux vm =
       exit 0 );
   if selected && !Flags.input_all_file_proofs then begin
        let lst = Mproof.find_files vm in
-       let print_file (p1, p2, idx, fname) = Printf.sprintf "{\"data\": %s, \"name\": %s, \"loc\": %i, \"file\": \"%s\"}\n" (Mproof.list_to_string p1) (Mproof.list_to_string p2) idx fname in
+       let print_file (p1, p2, p3, idx, fname) =
+          Printf.sprintf "{\"data\": %s, \"name\": %s, \"size\": %s, \"loc\": %i, \"file\": \"%s\"}\n"
+              (Mproof.list_to_string p1) (Mproof.list_to_string p2) (Mproof.list_to_string p3) idx fname in
        Printf.printf "[%s]\n" (String.concat ", " (List.map print_file lst));
        exit 0
   end;
