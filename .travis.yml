@@ -21,7 +21,7 @@ before_install:
   - sudo apt-get install -y psmisc
   - wget https://releases.parity.io/ethereum/v2.4.3/x86_64-unknown-linux-gnu/parity -O $HOME/bin/parity
   - chmod 755 $HOME/bin/parity
-  - parity --config dev &
+  - ( parity --config dev || echo foo ) &
   - sleep 5
   - killall parity
   - echo > pass
@@ -50,7 +50,7 @@ install:
 #  - npm run install
 #  - npm run deps
   - eval $(opam config env)
-  - cd ocaml-offchain/interpreter && make && cd ../../
+  - cd ocaml-offchain/interpreter && make && sh runtests.sh && cd ../../
   - npm run compile
   - npm run deploy
 
