@@ -5,7 +5,7 @@ combined.log.json
 
 .vscode
 tmp.*
-tmp
+tmp/*
 *.swp
 build
 wasm-client/contracts.json
