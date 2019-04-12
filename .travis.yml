@@ -27,7 +27,6 @@ before_install:
   - sleep 5
   - echo > pass
   - parity --config dev --unlock="0x00a329c0648769a73afac7f9381e08fb43dbea72" --password=pass &
-  - sleep 5
 
   # Install IPFS
   - wget "https://dist.ipfs.io/go-ipfs/v0.4.9/go-ipfs_v0.4.9_linux-amd64.tar.gz" -O /tmp/ipfs.tar.gz
@@ -35,8 +34,6 @@ before_install:
   - export PATH="$HOME/bin/go-ipfs:$HOME/bin:$PATH"
   - ipfs init
   - ipfs daemon &
-  - sleep 15
-  - curl http://localhost:5001/api/v0/id
 
   # Install ocaml
   - sudo apt-get install -y wget gcc ocaml opam libzarith-ocaml-dev m4 pkg-config zlib1g-dev libffi-dev
@@ -45,6 +42,7 @@ before_install:
   - eval $(opam config env)
   - opam update
   - opam install -y cryptokit yojson ctypes ctypes-foreign
+  - curl http://localhost:5001/api/v0/id
 
 install:
   - npm run fixperms
@@ -57,4 +55,5 @@ install:
   - npm run deploy
 
 script:
-  - NODE_ENV='production' npm run test
+#  - NODE_ENV='production' npm run test
+  - npm run test
