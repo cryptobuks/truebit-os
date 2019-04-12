@@ -10,17 +10,16 @@ cache:
 
 before_install:
   # Install Ethereum Tools
-  - sudo add-apt-repository ppa:ethereum/ethereum -y
-  - sudo apt-get update
-  - sudo apt-get install software-properties-common
-  - sudo apt-get install solc
-  # Install Ganache & Truffle
-  - npm i -g ganache-cli truffle@4.1.8
-  - ganache-cli &>/dev/null &
+  # - sudo add-apt-repository ppa:ethereum/ethereum -y
+  # - sudo apt-get update
+  # - sudo apt-get install software-properties-common
+  # - sudo apt-get install solc
+  - wget "wget https://github.com/ethereum/solidity/releases/download/v0.5.2/solc-static-linux" -O /home/bin/solc
+  - chmod 755 /home/bin/solc
   # Install IPFS
   - wget "https://dist.ipfs.io/go-ipfs/v0.4.9/go-ipfs_v0.4.9_linux-amd64.tar.gz" -O /tmp/ipfs.tar.gz
   - pushd . && cd $HOME/bin && tar -xzvf /tmp/ipfs.tar.gz && popd
-  - export PATH="$HOME/bin/go-ipfs:$PATH"
+  - export PATH="$HOME/bin/go-ipfs:$HOME/bin:$PATH"
   - ipfs init
   - ipfs daemon &>/dev/null &
   - sleep 5
@@ -30,15 +29,17 @@ before_install:
   - sudo apt-get install -y wget gcc ocaml opam libzarith-ocaml-dev m4 pkg-config zlib1g-dev libffi-dev
   - opam init -y --comp=4.06.1
 #  - opam init -y --comp=4.05.0
-#  - eval $(opam config env)
-#  - opam update
-#  - opam install -y cryptokit yojson ctypes ctypes-foreign
+  - eval $(opam config env)
+  - opam update
+  - opam install -y cryptokit yojson ctypes ctypes-foreign
 
 install:
   - npm run fixperms
   - npm install
 #  - npm run install
-  - npm run deps
+#  - npm run deps
+  - eval $(opam config env)
+  - cd ocaml-offchain/interpreter && make && cd ../../
   - npm run compile
   - npm run deploy
 
