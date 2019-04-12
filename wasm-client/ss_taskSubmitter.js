@@ -114,7 +114,7 @@ module.exports = async (web3, logger, mcFileSystem) => {
 
         let ipfsHash = ipfsFile.hash
         let codeName = ipfsFile.path
-        let codeSize = ipfsFile.size
+        let codeSize = codeBuf.length
 
         let newFiles = []
 
