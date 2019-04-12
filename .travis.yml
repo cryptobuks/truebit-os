@@ -14,8 +14,13 @@ before_install:
   # - sudo apt-get update
   # - sudo apt-get install software-properties-common
   # - sudo apt-get install solc
-  - wget "wget https://github.com/ethereum/solidity/releases/download/v0.5.2/solc-static-linux" -O /home/bin/solc
+  - wget https://github.com/ethereum/solidity/releases/download/v0.5.2/solc-static-linux -O /home/bin/solc
   - chmod 755 /home/bin/solc
+
+  # Install parity
+  - wget https://releases.parity.io/ethereum/v2.4.3/x86_64-unknown-linux-gnu/parity -O /home/bin/parity
+  - chmod 755 /home/bin/parity
+
   # Install IPFS
   - wget "https://dist.ipfs.io/go-ipfs/v0.4.9/go-ipfs_v0.4.9_linux-amd64.tar.gz" -O /tmp/ipfs.tar.gz
   - pushd . && cd $HOME/bin && tar -xzvf /tmp/ipfs.tar.gz && popd
