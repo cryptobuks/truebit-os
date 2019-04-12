@@ -95,8 +95,6 @@ describe('Truebit OS WASM Scrypt test', async function () {
 			let ipfsFile = (await fileSystem.upload(codeBuf, "task.wasm"))[0]
 
 			let ipfsHash = ipfsFile.hash
-			let size = ipfsFile.size
-			let name = ipfsFile.path
 
 			let merkleRoot = merkleComputer.merkleRoot(os.web3, codeBuf)
 			let nonce = Math.floor(Math.random() * Math.pow(2, 60)).toString()
@@ -105,7 +103,7 @@ describe('Truebit OS WASM Scrypt test', async function () {
 
 			codeFileID = await tbFilesystem.methods.calcId(nonce).call({from:account})
 
-			await tbFilesystem.methods.addIPFSFile(name, size, ipfsHash, merkleRoot, nonce).send({ from: account, gas: 300000 })
+			await tbFilesystem.methods.addIPFSFile("task.wasm", codeBuf.length, ipfsHash, merkleRoot, nonce).send({ from: account, gas: 300000 })
 			await tbFilesystem.methods.setCodeRoot(codeFileID, info.codehash, 2).send({ from: account, gas: 300000 })
 		})
 
